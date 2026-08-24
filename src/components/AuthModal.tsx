@@ -65,7 +65,7 @@ export default function AuthModal() {
           body: JSON.stringify({ identifier: email, password, authMethod: 'email' })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Registration failed');
+        if (!res.ok) throw new Error((data.error ? data.error + ' - ' + (data.details || '') : 'Registration failed'));
 
       
       
@@ -440,6 +440,7 @@ export default function AuthModal() {
     </div>
   );
 }
+
 
 
 
