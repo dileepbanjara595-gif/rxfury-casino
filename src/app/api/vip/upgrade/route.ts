@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     }
 
     const targetLevel = parseInt(level.replace("L", ""));
-    const currentLevel = session.user.vipLevel;
+    // Fix: use vipLevelId instead of vipLevel to match session type
+    const currentLevel = (session.user as any).vipLevelId || 0;
 
     if (targetLevel <= currentLevel) {
       return NextResponse.json({ error: "Already at or above this VIP level" }, { status: 400 });
@@ -35,17 +36,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Insufficient wallet balance", code: "INSUFFICIENT_FUNDS" }, { status: 400 });
     }
 
-    // Deduct balance and upgrade VIP level atomically
+    // Deduct balance and update VIP level atomically using vipLevelId
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         mainWalletBalance: { decrement: price },
-        // अगर आप ID से कनेक्ट कर रहे हैं:
-vipLevel: {
-  connect: { id: targetLevel }
-}
+        vipLevelId: targetLevel
       }
-      
     });
 
     // Also record this as a transaction for audit trail
@@ -66,4 +63,3 @@ vipLevel: {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
