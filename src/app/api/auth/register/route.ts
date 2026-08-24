@@ -17,15 +17,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Check if user exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: authMethod === "email" ? identifier : undefined },
-          { phone: authMethod === "phone" ? identifier : undefined },
-        ],
-      },
-    });
+    // Safely check if user exists based on authMethod
+    let existingUser = null;
+    if (authMethod === "email") {
+      existingUser = await prisma.user.findUnique({
+        where: { email: identifier },
+      });
+    } else if (authMethod === "phone") {
+      existingUser = await prisma.user.findUnique({
+        where: { phone: identifier },
+      });
+    } else {
+      existingUser = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { phone: identifier },
+          ],
+        },
+      });
+    }
 
     if (existingUser) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 });
@@ -52,7 +63,7 @@ export async function POST(req: Request) {
       initialBonus = 50;
     }
 
-    // Check for Referral (if it's not fury50, see if it matches a user's systematicId)
+    // Check for Referral
     let referredById = null;
     if (promoCode && promoCode.toLowerCase() !== "fury50") {
       const referrer = await prisma.user.findUnique({
