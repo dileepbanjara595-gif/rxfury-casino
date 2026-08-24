@@ -48,7 +48,7 @@ export default function AuthModal() {
   if (!isOpen) return null;
 
   // Supabase: Send Real OTP & Save Password (Registration)
-  const handleSendOtp = async (e: React.MouseEvent) => {
+    const handleSendOtp = async (e: React.MouseEvent) => {
     e.preventDefault();
     if (!email || !password) {
       setStatus({ type: 'error', message: 'Please enter both an email and a secure password first.' });
@@ -59,16 +59,14 @@ export default function AuthModal() {
     setStatus(null);
 
     try {
-              const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: email, password, authMethod: 'email' })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error((data.error ? data.error + ' - ' + (data.details || '') : 'Registration failed'));
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type: 'register' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Failed to send OTP');
 
-      
-      
       setOtpSent(true);
       setCountdown(30);
       setStatus({ type: 'success', message: 'OTP Sent successfully! Please check your email inbox (and spam).' });
@@ -90,7 +88,13 @@ export default function AuthModal() {
     setStatus(null);
 
     try {
-      throw new Error('Resend OTP not fully implemented');
+            const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, type: 'register' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Failed to resend OTP');
 
       
       
@@ -158,13 +162,35 @@ export default function AuthModal() {
         router.refresh();
 
       } else if (view === 'register') {
-        if (!otpSent) {
+                if (!otpSent) {
           setStatus({ type: 'error', message: 'Please send an OTP first.' });
           setIsLoading(false);
           return;
         }
 
-        throw new Error('OTP verification not fully implemented yet');
+        if (!otp) {
+          setStatus({ type: 'error', message: 'Please enter the verification code.' });
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: email, password, authMethod: 'email', otp })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Registration failed');
+
+        // Automatically sign in after registration
+        const signInRes = await signIn("credentials", {
+          redirect: false,
+          email,
+          password
+        });
+        if (signInRes?.error) {
+           console.error("Auto sign-in failed:", signInRes.error);
+        }
 
         
 
@@ -440,6 +466,9 @@ export default function AuthModal() {
     </div>
   );
 }
+
+
+
 
 
 

@@ -5,16 +5,35 @@ import bcrypt from "bcryptjs";
 // Helper to generate FURY-XXXXX ID
 const generateSystematicId = () => {
   const randomNum = Math.floor(10000 + Math.random() * 90000); // 5 digit number
-  return `FURY-${randomNum}`;
+  return 'FURY-' + randomNum;
 };
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { identifier, password, authMethod, promoCode } = body;
+    const { identifier, password, authMethod, promoCode, otp } = body;
 
     if (!identifier || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!otp) {
+      return NextResponse.json({ error: "OTP is required for registration" }, { status: 400 });
+    }
+
+    // Verify OTP
+    const validOtp = await prisma.oTP.findFirst({
+      where: {
+        email: identifier,
+        code: otp,
+        isUsed: false,
+        expiresAt: { gt: new Date() } // Must not be expired
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (!validOtp) {
+      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
     }
 
     // Safely check if user exists based on authMethod
@@ -74,6 +93,12 @@ export async function POST(req: Request) {
       }
     }
 
+    // Mark OTP as used
+    await prisma.oTP.update({
+      where: { id: validOtp.id },
+      data: { isUsed: true }
+    });
+
     // Create User
     const newUser = await prisma.user.create({
       data: {
@@ -97,9 +122,8 @@ export async function POST(req: Request) {
       }
     }, { status: 201 });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error);
-    return NextResponse.json({ error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error", details: error.message || String(error) }, { status: 500 });
   }
 }
-
