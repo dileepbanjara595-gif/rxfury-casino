@@ -40,7 +40,8 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: {
         mainWalletBalance: { decrement: price },
-        vipLevelId: targetLevel as any
+        // लाइन 43 के आस-पास जहाँ vipLevelId update हो रहा है, उसे ऐसे करें:
+vipLevelId: targetLevel as any
       }
     });
 
