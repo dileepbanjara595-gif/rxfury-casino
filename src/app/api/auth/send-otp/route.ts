@@ -21,8 +21,11 @@ export async function POST(req: Request) {
     // Validate based on type
     if (type === 'register') {
       const existingUser = await prisma.user.findUnique({ where: { email } });
-      if (existingUser) {
-        return NextResponse.json({ error: 'Email already registered. Please log in.' }, { status: 409 });
+            if (existingUser) {
+        if (existingUser.isVerified) {
+          return NextResponse.json({ error: 'Email already registered. Please log in.' }, { status: 409 });
+        }
+        // If they exist but are NOT verified, we allow them to request a new OTP to finish registration!
       }
     } else if (type === 'forgot_password') {
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -77,3 +80,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message || String(error) }, { status: 500 });
   }
 }
+
