@@ -1,0 +1,157 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model VipLevel {
+  id                 Int     @id @default(autoincrement())
+  levelName          String  @unique
+  rakebackPercentage Float   @default(0.0)
+  levelUpBonus       Float   @default(0.0)
+  description        String? @db.Text
+  logoUrl            String?
+
+  users User[]
+}
+
+model Game {
+  id       Int     @id @default(autoincrement())
+  name     String
+  slug     String  @unique
+  logoUrl  String
+  type     String // 'crash', 'card', 'slots', 'table'
+  isActive Boolean @default(true)
+
+  gameHistories GameHistory[]
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  systematicId       String    @unique // FURY-XXXXX
+  firstName          String?
+  lastName           String?
+  dob                DateTime?
+  profilePhoto       String?   @db.Text
+  email              String?   @unique
+  phone              String?   @unique
+  passwordHash       String
+  mainWalletBalance  Float     @default(0.0)
+  bonusWalletBalance Float     @default(0.0)
+
+  vipLevelId Int      @default(1)
+  vipLevel   VipLevel @relation(fields: [vipLevelId], references: [id])
+
+  isVerified Boolean  @default(false)
+  role       Role     @default(USER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Self-relation for Affiliate MLM
+  referredById String?
+  referredBy   User?   @relation("AffiliateNetwork", fields: [referredById], references: [id])
+
+  referrals User[] @relation("AffiliateNetwork")
+
+  transactions      Transaction[]
+  gameHistories     GameHistory[]
+  commissionsEarned AffiliateCommission[] @relation("CommissionEarner")
+  commissionsGiven  AffiliateCommission[] @relation("CommissionGiver")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      TxType
+  method    String? // 'upi_qr', 'crypto_usdt', 'bank_transfer'
+  amount    Float
+  currency  String   @default("INR")
+  utrOrHash String? // User uploaded reference
+  status    TxStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TxType {
+  DEPOSIT
+  WITHDRAWAL
+  BONUS
+  RAKEBACK
+}
+
+enum TxStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model GameHistory {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  gameId   Int?
+  game     Game?  @relation(fields: [gameId], references: [id])
+  gameName String // Kept for fallback if game is deleted
+
+  sessionId     String
+  betAmount     Float
+  multiplier    Float?    @default(1.0)
+  winLossStatus WinStatus
+  payoutAmount  Float
+  createdAt     DateTime  @default(now())
+}
+
+enum WinStatus {
+  WIN
+  LOSS
+}
+
+model GameSession {
+  id            String        @id @default(uuid())
+  gameName      String
+  serverSeed    String
+  resultOutcome String?
+  status        SessionStatus @default(BETTING)
+  createdAt     DateTime      @default(now())
+  completedAt   DateTime?
+}
+
+enum SessionStatus {
+  BETTING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model AffiliateCommission {
+  id         String   @id @default(uuid())
+  userId     String // User who earns the commission
+  fromUserId String // User whose action generated the commission
+  tier       Int // 1, 2, or 3
+  amount     Float
+  createdAt  DateTime @default(now())
+
+  user     User @relation("CommissionEarner", fields: [userId], references: [id])
+  fromUser User @relation("CommissionGiver", fields: [fromUserId], references: [id])
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  email     String?
+  phone     String?
+  type      String? // 'verify_email', 'reset_password', 'withdrawal_confirmation'
+  code      String
+  isUsed    Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

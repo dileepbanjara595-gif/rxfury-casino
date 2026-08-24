@@ -1,0 +1,303 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Crown, Star, Shield, Zap, Info, CheckCircle2, Wallet, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { useUserStore } from "@/store/userStore";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+
+const vipTiers = [
+  { level: "L1", price: 0, name: "Silver", color: "from-slate-400 to-slate-600", text: "text-slate-100", shadow: "shadow-slate-500/20" },
+  { level: "L2", price: 1500, name: "Sapphire", color: "from-blue-500 to-blue-700", text: "text-blue-100", shadow: "shadow-blue-500/20" },
+  { level: "L3", price: 2700, name: "Emerald", color: "from-emerald-400 to-emerald-700", text: "text-emerald-100", shadow: "shadow-emerald-500/20" },
+  { level: "L4", price: 4000, name: "Bronze", color: "from-orange-400 to-orange-700", text: "text-orange-100", shadow: "shadow-orange-500/20" },
+  { level: "L5", price: 8500, name: "Amethyst", color: "from-purple-400 to-purple-700", text: "text-purple-100", shadow: "shadow-purple-500/20" },
+  { level: "L6", price: 11000, name: "Ruby", color: "from-rose-500 to-rose-700", text: "text-rose-100", shadow: "shadow-rose-500/20" },
+  { level: "L7", price: 15000, name: "Gold", color: "from-yellow-400 to-yellow-600", text: "text-yellow-100", shadow: "shadow-yellow-500/40" },
+  { level: "L8", price: 20000, name: "Diamond", color: "from-cyan-300 via-white to-cyan-500", text: "text-cyan-900", shadow: "shadow-cyan-500/50" },
+];
+
+export default function VIPClubPage() {
+  const router = useRouter();
+  const { session } = useUserStore();
+  
+  const [currentVipLevel, setCurrentVipLevel] = useState(1);
+  const [walletBalance, setWalletBalance] = useState(0);
+  
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [targetUpgrade, setTargetUpgrade] = useState<any>(null);
+
+  useEffect(() => {
+    if (session?.user) {
+      setCurrentVipLevel((session.user as any)?.vipLevel || 1);
+      setWalletBalance((session.user as any)?.mainWalletBalance || 0);
+    }
+  }, [session]);
+
+  const handleUpgrade = async (tier: any) => {
+    if (walletBalance < tier.price) {
+      setTargetUpgrade(tier);
+      setShowDepositModal(true);
+      return;
+    }
+
+    setIsProcessing(tier.level);
+    try {
+      const res = await fetch("/api/vip/upgrade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: tier.level, price: tier.price })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        // Success
+        setWalletBalance(data.newBalance);
+        setCurrentVipLevel(data.newLevel);
+        setShowSuccessModal(true);
+        // Soft refresh session
+        /* updateSession() */; 
+      } else {
+        if (data.code === "INSUFFICIENT_FUNDS") {
+          setTargetUpgrade(tier);
+          setShowDepositModal(true);
+        } else {
+          alert(data.error || "Upgrade failed");
+        }
+      }
+    } catch (err) {
+      alert("Something went wrong");
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  // Dummy data for progress
+  const currentTurnover = walletBalance * 2.5; 
+  const targetTurnover = currentVipLevel < 8 ? vipTiers[currentVipLevel].price * 10 : currentTurnover;
+  const progressPercent = Math.min((currentTurnover / targetTurnover) * 100, 100);
+
+  const currentTierObj = vipTiers[currentVipLevel - 1];
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-gray-100 font-sans pb-16 selection:bg-yellow-500/30">
+      
+      {/* Hero Section */}
+      <div className="relative overflow-hidden bg-gray-900 border-b border-gray-800 pt-16 pb-20 px-4 shadow-2xl">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-yellow-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <Crown className="w-16 h-16 text-yellow-500 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
+          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-6">
+            RXFURY <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600">Elite VIP Club</span>
+          </h1>
+          <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">
+            Ascend through the ranks to unlock exclusive bonuses, daily cashback, and higher withdrawal limits. Upgrade via gameplay or direct purchase.
+          </p>
+        </div>
+      </div>
+
+      {/* Current Status Banner */}
+      <div className="max-w-5xl mx-auto px-4 -mt-10 relative z-20">
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-center md:text-left">
+              <p className="text-gray-400 text-sm uppercase tracking-widest font-semibold mb-1">Your Status</p>
+              <div className="flex items-center justify-center md:justify-start space-x-3">
+                <h2 className="text-3xl font-black text-white">VIP L{currentVipLevel}</h2>
+                <span className={`bg-gray-800 ${currentTierObj.text} text-xs font-bold px-2 py-1 rounded border border-gray-700`}>
+                  {currentTierObj.name} Member
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 font-mono mt-2">Wallet: ₹{walletBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+            </div>
+
+            <div className="w-full md:w-1/2">
+              <div className="flex justify-between text-sm text-gray-400 mb-2 font-medium">
+                <span>Turnover: ₹{currentTurnover.toLocaleString()}</span>
+                {currentVipLevel < 8 && <span>Next: L{currentVipLevel + 1} (₹{targetTurnover.toLocaleString()})</span>}
+              </div>
+              <div className="h-3 w-full bg-gray-950 rounded-full overflow-hidden border border-gray-800">
+                <div 
+                  className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full relative transition-all duration-1000"
+                  style={{ width: `${progressPercent}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-right">
+                <Zap className="inline w-3 h-3 mr-1 text-yellow-500" />
+                Play more games to level up naturally!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid Section */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 mt-16">
+        
+        {/* Disclaimer */}
+        <div className="flex items-center justify-center mb-8 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm max-w-2xl mx-auto text-center">
+          <Info className="w-5 h-5 mr-3 flex-shrink-0" />
+          <p>
+            Prices are in <strong>INR</strong>. For international players, amounts will auto-convert to your local currency upon checkout.
+          </p>
+        </div>
+
+        {/* Tiers Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {vipTiers.map((tier, index) => {
+            const levelNum = parseInt(tier.level.replace("L", ""));
+            const isCurrent = levelNum === currentVipLevel;
+            const isPassed = levelNum < currentVipLevel;
+
+            return (
+              <div 
+                key={tier.level}
+                className={`relative bg-gray-900 border ${isCurrent ? 'border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'border-gray-800 hover:-translate-y-2 hover:shadow-lg'} rounded-2xl overflow-hidden flex flex-col transition-all duration-300 ${tier.shadow}`}
+              >
+                {/* Card Header Gradient */}
+                <div className={`p-6 bg-gradient-to-br ${tier.color} relative ${isPassed ? 'grayscale opacity-70' : ''}`}>
+                  <div className="absolute inset-0 bg-black/20"></div>
+                  <div className="relative z-10 flex justify-between items-start">
+                    <div>
+                      <p className={`text-sm font-bold tracking-widest uppercase ${tier.text} opacity-80`}>{tier.name}</p>
+                      <h3 className={`text-4xl font-black ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} mt-1`}>{tier.level}</h3>
+                    </div>
+                    {index > 5 ? (
+                      <Crown className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                    ) : index > 3 ? (
+                      <Star className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                    ) : (
+                      <Shield className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-6 flex-grow flex flex-col justify-between">
+                  <div className="mb-6 text-center">
+                    <p className="text-gray-400 text-sm font-medium mb-1">Direct Upgrade Price</p>
+                    <p className="text-3xl font-bold text-white tracking-tight">
+                      {tier.price === 0 ? "Free" : `₹ ${tier.price.toLocaleString()}`}
+                    </p>
+                  </div>
+                  
+                  <ul className="space-y-3 mb-8 text-sm text-gray-400">
+                    <li className="flex items-center">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 shrink-0" />
+                      Increased Withdrawal Limits
+                    </li>
+                    <li className="flex items-center">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 shrink-0" />
+                      Priority Support
+                    </li>
+                    {index > 2 && (
+                      <li className="flex items-center text-gray-300">
+                        <CheckCircle2 className="w-4 h-4 text-yellow-500 mr-2 shrink-0" />
+                        Weekly Cashback %
+                      </li>
+                    )}
+                  </ul>
+
+                  <button 
+                    onClick={() => handleUpgrade(tier)}
+                    disabled={isCurrent || isPassed || isProcessing === tier.level}
+                    className={`w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center
+                      ${isCurrent || isPassed 
+                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
+                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.2)] hover:shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                      }
+                    `}
+                  >
+                    {isProcessing === tier.level ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : isCurrent ? (
+                      'Current Level'
+                    ) : isPassed ? (
+                      'Unlocked'
+                    ) : (
+                      'Purchase Upgrade'
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* --- SUCCESS MODAL (Framer Motion) --- */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.8, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 50 }}
+              className="bg-gray-900 border border-yellow-500/50 rounded-3xl p-8 md:p-12 max-w-md w-full text-center shadow-[0_0_50px_rgba(234,179,8,0.2)] relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-yellow-500/20 blur-[50px]"></div>
+              <Crown className="w-20 h-20 text-yellow-500 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]" />
+              <h3 className="text-3xl font-black text-white mb-2">VIP Upgraded!</h3>
+              <p className="text-gray-400 mb-8">You are now a VIP Level {currentVipLevel} member. Enjoy your new exclusive perks.</p>
+              
+              <button 
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-4 rounded-xl font-bold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-300 hover:to-yellow-500 uppercase tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+              >
+                Continue
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* --- INSUFFICIENT BALANCE / DEPOSIT MODAL --- */}
+      <AnimatePresence>
+        {showDepositModal && targetUpgrade && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-gray-900 border border-red-500/30 rounded-3xl p-8 max-w-md w-full shadow-2xl relative"
+            >
+              <div className="flex items-center justify-center w-16 h-16 bg-red-500/10 rounded-full mx-auto mb-6 border border-red-500/20">
+                <Wallet className="w-8 h-8 text-red-500" />
+              </div>
+              <h3 className="text-2xl font-black text-white text-center mb-2">Insufficient Balance</h3>
+              <p className="text-gray-400 text-center mb-6 text-sm">
+                You need ₹{targetUpgrade.price.toLocaleString()} to upgrade to VIP {targetUpgrade.level}. Your current balance is ₹{walletBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}.
+              </p>
+              
+              <div className="space-y-3">
+                <Link 
+                  href="/wallet/deposit"
+                  className="w-full flex items-center justify-center py-4 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-500 uppercase tracking-widest shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all group"
+                >
+                  Deposit Funds Now
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <button 
+                  onClick={() => setShowDepositModal(false)}
+                  className="w-full py-4 rounded-xl font-bold text-gray-500 hover:text-white hover:bg-gray-800 uppercase tracking-widest transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+}
+
