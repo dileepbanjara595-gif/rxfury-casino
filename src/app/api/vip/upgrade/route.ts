@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: {
         mainWalletBalance: { decrement: price },
-        vipLevel: targetLevel
+        vipLevelId: targetLevel
       }
     });
 
@@ -62,3 +62,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+

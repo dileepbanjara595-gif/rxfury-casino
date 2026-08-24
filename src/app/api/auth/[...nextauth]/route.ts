@@ -42,7 +42,7 @@ export const authOptions: AuthOptions = {
           role: user.role,
           mainWalletBalance: user.mainWalletBalance,
           bonusWalletBalance: user.bonusWalletBalance,
-          vipLevel: user.vipLevel,
+          vipLevel: user.vipLevelId,
           firstName: user.firstName,
           lastName: user.lastName,
           profilePhoto: user.profilePhoto
@@ -105,3 +105,4 @@ export const authOptions: AuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+
