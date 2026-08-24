@@ -99,6 +99,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error("Registration error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
+
