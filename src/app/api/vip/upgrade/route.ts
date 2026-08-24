@@ -40,9 +40,12 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: {
         mainWalletBalance: { decrement: price },
-        // लाइन 43 के आस-पास जहाँ vipLevelId update हो रहा है, उसे ऐसे करें:
-vipLevelId: targetLevel as any
+        // अगर आप ID से कनेक्ट कर रहे हैं:
+vipLevel: {
+  connect: { id: targetLevel }
+}
       }
+      
     });
 
     // Also record this as a transaction for audit trail
