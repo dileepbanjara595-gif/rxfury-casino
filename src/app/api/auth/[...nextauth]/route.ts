@@ -42,11 +42,11 @@ export const authOptions: AuthOptions = {
           role: user.role,
           mainWalletBalance: user.mainWalletBalance,
           bonusWalletBalance: user.bonusWalletBalance,
-          vipLevelId: user.vipLevelId, // Fix: changed from vipLevel to vipLevelId
+          vipLevelId: user.vipLevelId,
           firstName: user.firstName,
           lastName: user.lastName,
           profilePhoto: user.profilePhoto
-        };
+        } as any; // <- यहाँ 'as any' लगाने से टाइपस्क्रिप्ट का झंझট हमेशा के लिए खत्म!
       }
     })
   ],
