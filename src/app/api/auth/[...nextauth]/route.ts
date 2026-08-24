@@ -46,7 +46,7 @@ export const authOptions: AuthOptions = {
           firstName: user.firstName,
           lastName: user.lastName,
           profilePhoto: user.profilePhoto
-        } as any; // <- यहाँ 'as any' लगाने से टाइपस्क्रिप्ट का झंझট हमेशा के लिए खत्म!
+        } as any;
       }
     })
   ],
