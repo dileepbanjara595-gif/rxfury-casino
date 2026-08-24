@@ -66,7 +66,7 @@ export default function ProfileDashboard() {
           </div>
           <div className="text-right">
             <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
-              VIP {(session.user as any)?.vipLevel || 1}
+              VIP {(session.user as any)?.vipLevelId || 1}
             </div>
           </div>
         </div>
@@ -234,6 +234,7 @@ export default function ProfileDashboard() {
     </div>
   );
 }
+
 
 
 

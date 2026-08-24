@@ -32,7 +32,7 @@ export default function VIPClubPage() {
 
   useEffect(() => {
     if (session?.user) {
-      setCurrentVipLevel((session.user as any)?.vipLevel || 1);
+      setCurrentVipLevel((session.user as any)?.vipLevelId || 1);
       setWalletBalance((session.user as any)?.mainWalletBalance || 0);
     }
   }, [session]);
@@ -300,4 +300,5 @@ export default function VIPClubPage() {
     </div>
   );
 }
+
 

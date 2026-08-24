@@ -7,7 +7,7 @@ declare module "next-auth" {
     role: string;
     mainWalletBalance: number;
     bonusWalletBalance: number;
-    vipLevel: number;
+    vipLevelId: number;
   }
 
   interface Session {
@@ -17,7 +17,8 @@ declare module "next-auth" {
       role: string;
       mainWalletBalance: number;
       bonusWalletBalance: number;
-      vipLevel: number;
+      vipLevelId: number;
     };
   }
 }
+
