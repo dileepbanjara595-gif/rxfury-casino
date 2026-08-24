@@ -4,54 +4,103 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUserStore } from '@/store/userStore';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
-import { useCurrencyStore, CURRENCY_SYMBOLS, formatCurrency, convertFromBase } from '@/store/currencyStore';
+import { useCurrencyStore, formatCurrency, convertFromBase } from '@/store/currencyStore';
 import { 
   User, Mail, Lock, Shield, 
   Gamepad2, Trophy, Target, 
   Clock, ArrowUpRight, ArrowDownLeft, 
-  Wallet, Settings, CheckCircle2 
+  Wallet, Settings, CheckCircle2,
+  Edit2, Save, X
 } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user, profileData, isLoading } = useUserStore();
+  const { user, isLoading } = useUserStore();
   const { baseBalance, activeCurrency } = useCurrencyStore();
   const router = useRouter();
+
+  const [statsData, setStatsData] = useState({ totalGames: 0, totalWon: 0, winRate: '0.0' });
+  const [activityHistory, setActivityHistory] = useState<any[]>([]);
+  const [memberSince, setMemberSince] = useState('Recently');
+  const [isFetching, setIsFetching] = useState(true);
+
+  // Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/');
+    } else if (user) {
+      setFirstName((user as any).firstName || '');
+      setLastName((user as any).lastName || '');
+      
+      // Fetch real stats
+      fetch('/api/user/profile')
+        .then(res => res.json())
+        .then(data => {
+          if (data.stats) setStatsData(data.stats);
+          if (data.activityHistory) setActivityHistory(data.activityHistory);
+          if (data.memberSince) setMemberSince(data.memberSince);
+          setIsFetching(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch profile stats', err);
+          setIsFetching(false);
+        });
     }
   }, [user, isLoading, router]);
 
-  // Dummy Stats Data
-  const stats = [
-    { label: 'Total Games', value: '1,248', icon: Gamepad2, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Total Won', value: '₹4,85,000', icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-    { label: 'Win Rate', value: '64.2%', icon: Target, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  ];
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName })
+      });
+      if (res.ok) {
+        setIsEditing(false);
+        // Force reload to update global state if necessary
+        window.location.reload();
+      } else {
+        alert('Failed to update profile');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  // Dummy Activity History
-  const activityHistory = [
-    { id: 1, type: 'DEPOSIT', amount: '+500 USDT', date: 'Today, 14:30', status: 'Completed', icon: ArrowDownLeft, color: 'text-emerald-400' },
-    { id: 2, type: 'BET', amount: '-50 USDT', date: 'Yesterday, 21:15', status: 'Lost', icon: Gamepad2, color: 'text-gray-400' },
-    { id: 3, type: 'WIN', amount: '+120 USDT', date: 'Yesterday, 21:10', status: 'Completed', icon: Trophy, color: 'text-yellow-400' },
-    { id: 4, type: 'WITHDRAWAL', amount: '-1000 USDT', date: 'Oct 12, 09:00', status: 'Processing', icon: ArrowUpRight, color: 'text-orange-400' },
-  ];
-
-  if (isLoading || !user) {
+  if (isLoading || !user || isFetching) {
     return <div className="min-h-screen bg-[#1a1d29] flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
-  const shortUserId = user.id.substring(0, 8);
+  const shortUserId = user.systematicId || 'FURY-' + user.id.substring(0, 4).toUpperCase();
   const anyUser = user as any;
   
-    const displayName = anyUser?.firstName ? (anyUser.firstName + ' ' + (anyUser.lastName || '')).trim() : 'Player' + user.id.substring(0, 4);
+  const displayName = anyUser?.firstName ? (anyUser.firstName + ' ' + (anyUser.lastName || '')).trim() : 'Player ' + user.id.substring(0, 4);
 
-    const avatarSrc = anyUser?.profilePhoto 
+  const avatarSrc = anyUser?.profilePhoto 
     ? anyUser.profilePhoto 
-    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${anyUser?.id || "default"}`;
+    : \https://api.dicebear.com/7.x/avataaars/svg?seed=\\;
+
+  const stats = [
+    { label: 'Total Games', value: statsData.totalGames.toLocaleString(), icon: Gamepad2, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { label: 'Total Won', value: formatCurrency(convertFromBase(statsData.totalWon, activeCurrency), activeCurrency) + ' ' + activeCurrency, icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+    { label: 'Win Rate', value: statsData.winRate + '%', icon: Target, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  ];
+
+  const getActivityIcon = (item: any) => {
+    if (item.type.includes('DEPOSIT') || item.type.includes('BONUS')) return { icon: ArrowDownLeft, color: 'text-emerald-400' };
+    if (item.type.includes('WITHDRAWAL')) return { icon: ArrowUpRight, color: 'text-orange-400' };
+    if (item.type.includes('WIN')) return { icon: Trophy, color: 'text-yellow-400' };
+    return { icon: Gamepad2, color: 'text-gray-400' };
+  };
 
   return (
     <div className="min-h-screen bg-[#1a1d29] text-white font-sans selection:bg-emerald-500/30 pb-20 pt-24">
@@ -97,7 +146,7 @@ export default function ProfilePage() {
                 </div>
 
                 <p className="text-xs text-gray-500 mt-6 flex items-center justify-center uppercase tracking-widest">
-                  <Clock className="w-3 h-3 mr-1" /> Member since Oct 2026
+                  <Clock className="w-3 h-3 mr-1" /> Member since {memberSince}
                 </p>
               </div>
             </div>
@@ -112,20 +161,59 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Full Name</label>
-                  <div className="flex space-x-2">
-                    <input 
-                      type="text" 
-                      value={displayName}
-                      disabled
-                      className="flex-1 bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none focus:border-emerald-500 disabled:opacity-70 transition-colors"
-                    />
-                      <Link 
-                        href="/settings"
+                  {!isEditing ? (
+                    <div className="flex space-x-2">
+                      <input 
+                        type="text" 
+                        value={displayName}
+                        disabled
+                        className="flex-1 bg-black/40 border border-gray-800 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none disabled:opacity-70 transition-colors"
+                      />
+                      <button 
+                        onClick={() => setIsEditing(true)}
                         className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors flex items-center"
                       >
-                        Edit
-                      </Link>
-                  </div>
+                        <Edit2 className="w-4 h-4 mr-2" /> Edit
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input 
+                        type="text" 
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="First Name"
+                        className="w-full bg-black/40 border border-emerald-500/50 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none focus:border-emerald-500 transition-colors"
+                      />
+                      <input 
+                        type="text" 
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Last Name"
+                        className="w-full bg-black/40 border border-emerald-500/50 rounded-xl px-4 py-2.5 text-white font-medium focus:outline-none focus:border-emerald-500 transition-colors"
+                      />
+                      <div className="flex space-x-2 pt-2">
+                        <button 
+                          onClick={handleSaveProfile}
+                          disabled={isSaving}
+                          className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center disabled:opacity-50"
+                        >
+                          {isSaving ? 'Saving...' : <><Save className="w-4 h-4 mr-2" /> Save</>}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setIsEditing(false);
+                            setFirstName((user as any).firstName || '');
+                            setLastName((user as any).lastName || '');
+                          }}
+                          disabled={isSaving}
+                          className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -151,9 +239,9 @@ export default function ProfilePage() {
             {/* Gaming Statistics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {stats.map((stat, idx) => (
-                <div key={idx} className="bg-[#131824] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-gray-600 transition-colors">
-                  <div className={`absolute top-0 right-0 w-24 h-24 ${stat.bg} rounded-bl-full blur-2xl group-hover:scale-110 transition-transform`}></div>
-                  <stat.icon className={`w-8 h-8 ${stat.color} mb-4 relative z-10`} />
+                <div key={idx} className={\g-[#131824] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-gray-600 transition-colors\}>
+                  <div className={\bsolute top-0 right-0 w-24 h-24 \ rounded-bl-full blur-2xl group-hover:scale-110 transition-transform\}></div>
+                  <stat.icon className={\w-8 h-8 \ mb-4 relative z-10\} />
                   <p className="text-gray-400 text-sm font-bold uppercase tracking-wider relative z-10">{stat.label}</p>
                   <p className="text-3xl font-black mt-1 relative z-10">{stat.value}</p>
                 </div>
@@ -183,33 +271,39 @@ export default function ProfilePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800/50">
-                    {activityHistory.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="p-4">
-                          <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-lg bg-black/40 border border-gray-800 group-hover:border-gray-600 transition-colors`}>
-                              <item.icon className={`w-4 h-4 ${item.color}`} />
+                    {activityHistory.length > 0 ? activityHistory.map((item) => {
+                      const { icon: ItemIcon, color } = getActivityIcon(item);
+                      
+                      return (
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                          <td className="p-4">
+                            <div className="flex items-center space-x-3">
+                              <div className={\p-2 rounded-lg bg-black/40 border border-gray-800 group-hover:border-gray-600 transition-colors\}>
+                                <ItemIcon className={\w-4 h-4 \\} />
+                              </div>
+                              <span className="font-bold">{item.type}</span>
                             </div>
-                            <span className="font-bold">{item.type}</span>
-                          </div>
-                        </td>
-                        <td className={`p-4 font-black ${item.amount.startsWith('+') ? 'text-emerald-400' : 'text-gray-300'}`}>
-                          {item.amount}
-                        </td>
-                        <td className="p-4 text-gray-400 text-sm">
-                          {item.date}
-                        </td>
-                        <td className="p-4 text-right">
-                          <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                            item.status === 'Completed' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                            item.status === 'Processing' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 
-                            'bg-gray-500/10 text-gray-400 border border-gray-500/20'
-                          }`}>
-                            {item.status}
-                          </span>
+                          </td>
+                          <td className={\p-4 font-black \\}>
+                            {item.amount.startsWith('+') ? '+' : '-'}{formatCurrency(convertFromBase(item.rawAmount, activeCurrency), activeCurrency)} {activeCurrency}
+                          </td>
+                          <td className="p-4 text-gray-400 text-sm">
+                            {item.date}
+                          </td>
+                          <td className="p-4 text-right">
+                            <span className={\inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider \\}>
+                              {item.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    }) : (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-gray-500 font-bold uppercase tracking-widest">
+                          No recent activity found.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -222,8 +316,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-
-
-
