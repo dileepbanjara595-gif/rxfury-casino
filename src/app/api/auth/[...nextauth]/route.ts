@@ -1,63 +1,109 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import NextAuth, { AuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 
-export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export const authOptions: AuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-    const { level, price } = await req.json();
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.email },
+              { phone: credentials.email }
+            ]
+          }
+        });
 
-    if (!level || !price) {
-      return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
-    }
+        if (!user) {
+          return null;
+        }
 
-    const targetLevel = parseInt(level.replace("L", ""));
-    const currentLevel = (session.user as any).vipLevelId || 0;
+        const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
-    if (targetLevel <= currentLevel) {
-      return NextResponse.json({ error: "Already at or above this VIP level" }, { status: 400 });
-    }
+        if (!isPasswordValid) {
+          return null;
+        }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (user.mainWalletBalance < price) {
-      return NextResponse.json({ error: "Insufficient wallet balance", code: "INSUFFICIENT_FUNDS" }, { status: 400 });
-    }
-
-    // यहाँ as any लगाकर टाइप एरर को बाईपास कर रहे हैं ताकि बिल्د अटके नहीं
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        mainWalletBalance: { decrement: price },
-        vipLevelId: targetLevel
-      } as any
-    });
-
-    await prisma.transaction.create({
-      data: {
-        userId: user.id,
-        type: "WITHDRAWAL",
-        amount: price,
-        status: "APPROVED",
-        utrOrHash: `VIP_UPGRADE_${level}`
+        return {
+          id: user.id,
+          systematicId: user.systematicId,
+          email: user.email,
+          role: user.role,
+          mainWalletBalance: user.mainWalletBalance,
+          bonusWalletBalance: user.bonusWalletBalance,
+          vipLevelId: user.vipLevelId,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profilePhoto: user.profilePhoto
+        } as any;
       }
-    });
+    })
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        (token as any).systematicId = user.systematicId;
+        (token as any).role = user.role;
+        (token as any).vipLevelId = (user as any).vipLevelId;
+      }
+      
+      // Always fetch latest data from DB to ensure session is up to date (Profile & Wallet)
+      if (token?.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string }
+          });
+          if (dbUser) {
+            (token as any).firstName = dbUser.firstName;
+            (token as any).lastName = dbUser.lastName;
+            (token as any).profilePhoto = dbUser.profilePhoto;
+            (token as any).mainWalletBalance = dbUser.mainWalletBalance;
+            (token as any).bonusWalletBalance = dbUser.bonusWalletBalance;
+            (token as any).vipLevelId = dbUser.vipLevelId;
+          }
+        } catch (e) {
+          console.error("JWT Session DB Sync Error", e);
+        }
+      }
+      
+      return token;
+    },
+    async session({ session, token }) {
+      if (token && session.user) {
+        (session.user as any).id = token.id as string;
+        (session.user as any).systematicId = token.systematicId as string;
+        (session.user as any).role = token.role as string;
+        (session.user as any).mainWalletBalance = token.mainWalletBalance as number;
+        (session.user as any).bonusWalletBalance = token.bonusWalletBalance as number;
+        (session.user as any).vipLevelId = token.vipLevelId as number;
+        (session.user as any).firstName = token.firstName as string;
+        (session.user as any).lastName = token.lastName as string;
+        (session.user as any).profilePhoto = token.profilePhoto as string;
+      }
+      return session;
+    }
+  },
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/login",
+  },
+  secret: process.env.NEXTAUTH_SECRET || "fallback_secret_for_development",
+};
 
-    return NextResponse.json({ success: true, newLevel: targetLevel, newBalance: user.mainWalletBalance - price });
+const handler = NextAuth(authOptions);
 
-  } catch (error) {
-    console.error("VIP Upgrade Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
-  }
-}
+export { handler as GET, handler as POST };
