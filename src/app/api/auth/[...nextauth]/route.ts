@@ -42,7 +42,7 @@ export const authOptions: AuthOptions = {
           role: user.role,
           mainWalletBalance: user.mainWalletBalance,
           bonusWalletBalance: user.bonusWalletBalance,
-          vipLevel: user.vipLevelId,
+          vipLevelId: user.vipLevelId, // Fix: changed from vipLevel to vipLevelId
           firstName: user.firstName,
           lastName: user.lastName,
           profilePhoto: user.profilePhoto
@@ -50,12 +50,13 @@ export const authOptions: AuthOptions = {
       }
     })
   ],
-    callbacks: {
+  callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         (token as any).systematicId = user.systematicId;
         (token as any).role = user.role;
+        (token as any).vipLevelId = (user as any).vipLevelId;
       }
       
       // Always fetch latest data from DB to ensure session is up to date (Profile & Wallet)
@@ -70,6 +71,7 @@ export const authOptions: AuthOptions = {
             (token as any).profilePhoto = dbUser.profilePhoto;
             (token as any).mainWalletBalance = dbUser.mainWalletBalance;
             (token as any).bonusWalletBalance = dbUser.bonusWalletBalance;
+            (token as any).vipLevelId = dbUser.vipLevelId;
           }
         } catch (e) {
           console.error("JWT Session DB Sync Error", e);
@@ -85,7 +87,7 @@ export const authOptions: AuthOptions = {
         (session.user as any).role = token.role as string;
         (session.user as any).mainWalletBalance = token.mainWalletBalance as number;
         (session.user as any).bonusWalletBalance = token.bonusWalletBalance as number;
-        (session.user as any).vipLevel = token.vipLevel as number;
+        (session.user as any).vipLevelId = token.vipLevelId as number;
         (session.user as any).firstName = token.firstName as string;
         (session.user as any).lastName = token.lastName as string;
         (session.user as any).profilePhoto = token.profilePhoto as string;
@@ -105,4 +107,3 @@ export const authOptions: AuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
-
