@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:socket": "node socket-server.js",
-    "build": "prisma generate && tsc --skipLibCheck || true && next build",
+   "build": "prisma generate && NEXT_DISABLE_SOURCEMAPS=1 next build",
     "lint": "eslint"
   },
   "dependencies": {
