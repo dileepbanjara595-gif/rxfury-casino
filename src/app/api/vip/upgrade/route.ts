@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: {
         mainWalletBalance: { decrement: price },
-        vipLevelId: targetLevel
+        vipLevelId: targetLevel as any
       }
     });
 
