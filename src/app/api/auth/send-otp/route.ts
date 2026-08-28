@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { Resend } from 'resend';
+import { NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { Resend } from "resend";
 
 // Use Resend for emails
 const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key');
@@ -21,11 +21,10 @@ export async function POST(req: Request) {
     // Validate based on type
     if (type === 'register') {
       const existingUser = await prisma.user.findUnique({ where: { email } });
-            if (existingUser) {
+      if (existingUser) {
         if (existingUser.isVerified) {
           return NextResponse.json({ error: 'Email already registered. Please log in.' }, { status: 409 });
         }
-        // If they exist but are NOT verified, we allow them to request a new OTP to finish registration!
       }
     } else if (type === 'forgot_password') {
       const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -47,25 +46,25 @@ export async function POST(req: Request) {
 
     // Send email via Resend
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'dummy_key') {
-      console.log([DEV MODE] Resend API Key not found. OTP for  + email +  is  + otpCode);
+      console.log(`[DEV MODE] Resend API Key not found. OTP for ${email} is ${otpCode}`);
     } else {
       const { data, error } = await resend.emails.send({
         from: 'RXFURY <onboarding@resend.dev>',
         to: email,
         subject: 'Your RXFURY Verification Code',
-        html: 
+        html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1d29; color: #ffffff; border-radius: 10px;">
             <h2 style="color: #3b82f6; text-align: center; text-transform: uppercase; letter-spacing: 2px;">RXFURY Verification</h2>
             <p style="font-size: 16px; color: #d1d5db;">Hello,</p>
             <p style="font-size: 16px; color: #d1d5db;">Please use the following 6-digit OTP code to proceed:</p>
             <div style="text-align: center; margin: 30px 0;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; background-color: #000000; padding: 15px 30px; border-radius: 8px; border: 1px solid #374151; color: #3b82f6;">
-                 + otpCode + 
+                ${otpCode}
               </span>
             </div>
             <p style="font-size: 14px; color: #9ca3af; text-align: center;">This code will expire in 10 minutes.</p>
           </div>
-        
+        `,
       });
 
       if (error) {
@@ -80,4 +79,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message || String(error) }, { status: 500 });
   }
 }
-
