@@ -52,8 +52,8 @@ export async function POST(req: Request) {
     // Send email via Resend
     try {
       const { data, error } = await resend.emails.send({
-        from: '"RXFURY" <noreply@rxfurygame.com>',
-        to: email,
+        from: '"RXFURY" <team@rxfurygame.com>',
+        to: [email],
         subject: 'Your RXFURY Verification Code',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #1a1d29; color: #ffffff; border-radius: 10px;">

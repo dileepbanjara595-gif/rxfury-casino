@@ -37,7 +37,7 @@ export default function AffiliatePage() {
   // Generate dynamic referral link based on shortened UUID
   const systematicId = user ? `FURY-${user.id.substring(0, 5).toUpperCase()}` : "FURY-GUEST";
   // Assuming frontend is hosted at current origin
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://rxfury.com';
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://rxfurygame.com';
   const referralLink = `${baseUrl}/ref/${systematicId}`;
   
   const shareText = `Join me on RXFURY and get a 100% Welcome Bonus! Use my link: ${referralLink}`;

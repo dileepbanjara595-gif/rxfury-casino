@@ -17,7 +17,7 @@ export default function Footer() {
           <h3 className="text-xl font-bold text-white mb-2">RXFURY</h3>
           <p className="text-sm">Casino & Gaming Platform</p>
           <p className="text-sm mt-1">
-            Support: <a href="mailto:support@rxfurygame.com" className="text-blue-400 hover:underline">support@rxfurygame.com</a>
+            Support: <a href="mailto:team@rxfurygame.com" className="text-blue-400 hover:underline">team@rxfurygame.com</a>
           </p>
         </div>
         
