@@ -16,28 +16,7 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        // 1. Authenticate against Supabase Auth
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        
-        let supabaseId = null;
-        if (supabaseUrl && supabaseKey) {
-          const { createClient } = require('@supabase/supabase-js');
-          const supabase = createClient(supabaseUrl, supabaseKey);
-          
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: credentials.email,
-            password: credentials.password
-          });
-          
-          if (authError || !authData.user) {
-            console.error('Supabase Auth Failed:', authError?.message);
-            return null; // Invalid credentials
-          }
-          supabaseId = authData.user.id;
-        }
-
-        // 2. Fetch user profile from Prisma
+        // 1. Fetch user profile from Prisma
         const user = await prisma.user.findFirst({
           where: {
             OR: [
@@ -49,6 +28,42 @@ export const authOptions: AuthOptions = {
 
         if (!user) {
           return null;
+        }
+
+        // 2. Try Supabase Auth
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        
+        let supabaseId = null;
+        let isAuthenticated = false;
+
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = require('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
+          
+          if (!authError && authData.user) {
+            isAuthenticated = true;
+            supabaseId = authData.user.id;
+          } else {
+            console.error('Supabase Auth Failed, checking local DB fallback:', authError?.message);
+          }
+        }
+
+        // 3. Fallback to local bcrypt validation
+        if (!isAuthenticated && (user as any).password) {
+          const isPasswordValid = await bcrypt.compare(credentials.password, (user as any).password);
+          if (isPasswordValid) {
+            isAuthenticated = true;
+          }
+        }
+
+        if (!isAuthenticated) {
+          return null; // Both Supabase and Local auth failed
         }
 
         return {
