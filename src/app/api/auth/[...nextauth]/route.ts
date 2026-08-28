@@ -11,7 +11,7 @@ export const authOptions: AuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-            async authorize(credentials) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -20,6 +20,7 @@ export const authOptions: AuthOptions = {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
         
+        let supabaseId = null;
         if (supabaseUrl && supabaseKey) {
           const { createClient } = require('@supabase/supabase-js');
           const supabase = createClient(supabaseUrl, supabaseKey);
@@ -33,6 +34,7 @@ export const authOptions: AuthOptions = {
             console.error('Supabase Auth Failed:', authError?.message);
             return null; // Invalid credentials
           }
+          supabaseId = authData.user.id;
         }
 
         // 2. Fetch user profile from Prisma
@@ -49,8 +51,6 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        // We skip local bcrypt check because Supabase already verified the password!
-
         return {
           id: user.id,
           systematicId: user.systematicId,
@@ -61,7 +61,8 @@ export const authOptions: AuthOptions = {
           vipLevelId: user.vipLevelId,
           firstName: user.firstName,
           lastName: user.lastName,
-          profilePhoto: user.profilePhoto
+          profilePhoto: user.profilePhoto,
+          supabaseId: supabaseId
         } as any;
       }
     })
@@ -73,6 +74,7 @@ export const authOptions: AuthOptions = {
         (token as any).systematicId = user.systematicId;
         (token as any).role = user.role;
         (token as any).vipLevelId = (user as any).vipLevelId;
+        (token as any).supabaseId = (user as any).supabaseId;
       }
       
       // Always fetch latest data from DB to ensure session is up to date (Profile & Wallet)
@@ -107,6 +109,7 @@ export const authOptions: AuthOptions = {
         (session.user as any).firstName = token.firstName as string;
         (session.user as any).lastName = token.lastName as string;
         (session.user as any).profilePhoto = token.profilePhoto as string;
+        (session.user as any).supabaseId = token.supabaseId as string;
       }
       return session;
     }

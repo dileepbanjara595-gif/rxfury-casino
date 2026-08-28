@@ -21,6 +21,7 @@ export default function ProfilePage() {
   const [statsData, setStatsData] = useState({ totalGames: 0, totalWon: 0, winRate: '0.0' });
   const [activityHistory, setActivityHistory] = useState<any[]>([]);
   const [memberSince, setMemberSince] = useState('Recently');
+  const [supabaseUsername, setSupabaseUsername] = useState<string>('');
   const [isFetching, setIsFetching] = useState(true);
 
   // Editing state
@@ -44,6 +45,7 @@ export default function ProfilePage() {
           if (data.stats) setStatsData(data.stats);
           if (data.activityHistory) setActivityHistory(data.activityHistory);
           if (data.memberSince) setMemberSince(data.memberSince);
+          if (data.supabaseUsername) setSupabaseUsername(data.supabaseUsername);
           setIsFetching(false);
         })
         .catch(err => {
@@ -80,7 +82,7 @@ export default function ProfilePage() {
     return <div className="min-h-screen bg-[#1a1d29] flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
-  const shortUserId = (user as any).systematicId || 'FURY-' + user.id.substring(0, 4).toUpperCase();
+  const shortUserId = supabaseUsername || (user as any).systematicId || 'FURY-' + user.id.substring(0, 4).toUpperCase();
   const anyUser = user as any;
   
   const displayName = anyUser?.firstName ? (anyUser.firstName + ' ' + (anyUser.lastName || '')).trim() : 'Player ' + user.id.substring(0, 4);
