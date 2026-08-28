@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     // Send email via Resend
     try {
       const { data, error } = await resend.emails.send({
-        from: '"RXFURY" <noreply@rxfury.com>',
+        from: '"RXFURY" <noreply@rxfurygame.com>',
         to: email,
         subject: 'Your RXFURY Verification Code',
         html: `
@@ -85,4 +85,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message || String(error) }, { status: 500 });
   }
 }
+
 
