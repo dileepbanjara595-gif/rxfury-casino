@@ -44,35 +44,35 @@ export default function AviatorGamePage() {
   const recentHistory = [1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20];
 
   useEffect(() => {
-    setMounted(true);
-    const img = new window.Image();
-    img.src = "/plane.png";
-    planeImageRef.current = img;
-    
-    // Connect to Server-Authoritative Socket Engine
-    const socket = io("http://localhost:4000");
-    socketRef.current = socket;
+      setMounted(true);
+      const img = new window.Image();
+      img.src = "/plane.png";
+      planeImageRef.current = img;
+      
+      let isMounted = true;
 
-    socket.on("connect", () => {
-      console.log("Connected to Game Server");
-      socket.emit("join_aviator");
-    });
+      const pollState = async () => {
+        try {
+          const res = await fetch('/api/games/state?game=aviator');
+          if (res.ok && isMounted) {
+            const data = await res.json();
+            setSyncState(data);
+          }
+        } catch (e) {
+          console.error("Failed to sync aviator state:", e);
+        }
+      };
 
-    socket.on("gameStateUpdate", (payload: SyncState) => {
-      setSyncState(payload);
+      pollState(); // Initial fetch
 
-      // Handle round transitions purely based on server state changes
-      if (payload.state === "WAITING_FOR_BETS" && syncState.state === "CRASHED") {
-        // Reset local round variables when server resets
-        setIsBetPlaced(false);
-        setCashedOutAt(null);
-      }
-    });
+      // Fast polling loop to sync with serverless DB state
+      const interval = setInterval(pollState, 500); // 500ms sync loop
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+      return () => {
+        isMounted = false;
+        clearInterval(interval);
+      };
+    }, []);
 
   // Dynamic Canvas Rendering based on Server State
   useEffect(() => {
