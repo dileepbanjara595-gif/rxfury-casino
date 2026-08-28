@@ -135,10 +135,10 @@ export default function RummyGamePage() {
     }
   };
 
-  if (!mounted) return <div className="h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!mounted) return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   return (
-    <div className="h-[100dvh] bg-gray-950 text-gray-100 font-sans flex flex-col overflow-hidden relative selection:bg-emerald-500/30">
+    <div className="min-h-[100dvh] bg-gray-950 text-gray-100 font-sans flex flex-col overflow-x-hidden relative selection:bg-emerald-500/30 pb-24 md:pb-8 max-w-full">
       
       {/* Universal Header (Changes based on phase) */}
       <header className={`h-[60px] px-4 flex items-center justify-between shrink-0 z-50 transition-colors ${phase === 'lobby' ? 'bg-transparent absolute top-0 w-full' : 'bg-[#0a0f16] border-b border-[#1f2937]'}`}>

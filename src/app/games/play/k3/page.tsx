@@ -139,7 +139,7 @@ export default function K3GamePage() {
   };
 
   if (!mounted) {
-    return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
   const diceSum = diceValues.reduce((a, b) => a + b, 0);
@@ -158,7 +158,7 @@ export default function K3GamePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090b14] text-gray-100 font-sans flex flex-col pb-32 md:pb-0 selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#090b14] text-gray-100 font-sans flex flex-col pb-32 md:pb-0 selection:bg-blue-500/30 max-w-full">
       
       {/* Header */}
       <header className="sticky top-0 bg-[#0f1423]/90 backdrop-blur-md border-b border-[#1f2937] p-4 flex items-center justify-between shadow-2xl z-50">

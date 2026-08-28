@@ -318,7 +318,7 @@ export default function SolitairePage() {
     return `${m}:${s}`;
   };
 
-  if (!mounted) return <div className="h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!mounted) return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   const CardView = ({ card, isSelected, onClick, style }: { card: Card | null, isSelected?: boolean, onClick?: () => void, style?: React.CSSProperties }) => {
     if (!card) {
@@ -370,7 +370,7 @@ export default function SolitairePage() {
   };
 
   return (
-    <div className="h-[100dvh] bg-gray-950 text-gray-100 font-sans flex flex-col overflow-hidden selection:bg-emerald-500/30">
+    <div className="min-h-[100dvh] bg-gray-950 text-gray-100 font-sans flex flex-col overflow-x-hidden selection:bg-emerald-500/30 pb-24 md:pb-8 max-w-full">
       
       {/* --- HEADER --- */}
       <header className="h-[70px] bg-[#0a0f16] border-b border-[#1f2937] px-4 flex items-center justify-between shrink-0 z-50 shadow-md">
@@ -419,7 +419,7 @@ export default function SolitairePage() {
       </header>
 
       {/* --- PLAYING AREA --- */}
-      <main className="flex-grow relative bg-emerald-800 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-700 to-emerald-950 overflow-auto sm:overflow-hidden p-4 md:p-8 flex flex-col min-w-max">
+      <main className="flex-grow relative bg-emerald-800 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-700 to-emerald-950 overflow-auto sm:overflow-hidden p-4 md:p-8 flex flex-col w-full">
         
         {/* Felt Texture Overlay */}
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-30 mix-blend-overlay pointer-events-none"></div>
@@ -535,7 +535,7 @@ export default function SolitairePage() {
           {/* --- BOTTOM ROW (Tableaus) --- */}
           <div className="flex justify-center gap-2 md:gap-4 w-full max-w-5xl mx-auto relative z-10 flex-grow">
             {tableaus.map((col, colIdx) => (
-              <div key={colIdx} className="relative w-16 md:w-20 flex-shrink-0">
+              <div key={colIdx} className="relative w-[12vw] sm:w-16 md:w-20 flex-shrink-0">
                 <CardView card={null} onClick={() => handleTableauClick(colIdx, 0)} />
                 
                 {col.map((card, cardIdx) => {

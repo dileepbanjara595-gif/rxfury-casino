@@ -90,11 +90,11 @@ export default function MinesGamePage() {
   };
 
   if (!mounted) {
-    return <div className="h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
   return (
-    <div className="h-screen bg-[#0F1923] text-gray-100 font-sans flex flex-col overflow-hidden selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#0F1923] text-gray-100 font-sans flex flex-col overflow-x-hidden selection:bg-blue-500/30 max-w-full pb-24 md:pb-8">
       
       {/* Header */}
       <header className="h-[72px] bg-[#1C2A36] border-b border-[#2A3B4C] p-4 flex items-center justify-between shadow-lg shrink-0">
@@ -116,7 +116,7 @@ export default function MinesGamePage() {
       </header>
 
       {/* Main Split Layout */}
-      <div className="flex-grow flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-grow flex flex-col lg:flex-row overflow-y-auto w-full max-w-full">
         
         {/* Left: Betting Controls */}
         <aside className="w-full lg:w-[30%] bg-[#14212C] border-r border-[#2A3B4C] p-4 md:p-6 flex flex-col shrink-0 overflow-y-auto no-scrollbar shadow-[10px_0_20px_rgba(0,0,0,0.2)] z-10">
@@ -208,7 +208,7 @@ export default function MinesGamePage() {
         <main className="flex-grow bg-[#0A1016] relative flex flex-col items-center justify-center p-4 md:p-8">
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 pointer-events-none"></div>
           
-          <div className="relative z-10 w-full max-w-lg aspect-square">
+          <div className="relative z-10 w-full max-w-full sm:max-w-md md:max-w-lg aspect-square">
             <div className="grid grid-cols-5 gap-2 md:gap-3 w-full h-full">
               {grid.map((cell, index) => {
                 

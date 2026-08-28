@@ -138,7 +138,7 @@ export default function MotoRacingGamePage() {
   };
 
   if (!mounted) {
-    return <div className="h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
   // Custom Tooltip for Recharts
@@ -160,7 +160,7 @@ export default function MotoRacingGamePage() {
   const isBettingDisabled = gameState !== "betting" || countdown <= 5;
 
   return (
-    <div className="h-[100dvh] bg-[#090b14] text-gray-100 font-sans flex flex-col overflow-hidden selection:bg-emerald-500/30">
+    <div className="min-h-[100dvh] bg-[#090b14] text-gray-100 font-sans flex flex-col overflow-x-hidden selection:bg-emerald-500/30 pb-24 md:pb-8 max-w-full">
       
       {/* Header (60px) */}
       <header className="h-[60px] bg-[#0f1423] border-b border-[#1f2937] px-4 flex items-center justify-between shrink-0 z-50">

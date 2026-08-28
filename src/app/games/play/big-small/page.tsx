@@ -131,12 +131,12 @@ export default function WingoGamePage() {
     setIsProcessing(false);
   };
 
-  if (!mounted) return <div className="h-screen bg-[#1a1d29]" />;
+  if (!mounted) return <div className="min-h-screen bg-[#1a1d29] max-w-full pb-24 md:pb-8" />;
 
   const isFrozen = timeLeft <= 3;
 
   return (
-    <div className="h-screen bg-[#F7F8FF] text-gray-900 font-sans flex flex-col overflow-hidden max-w-[500px] mx-auto shadow-2xl relative">
+    <div className="min-h-screen bg-[#F7F8FF] text-gray-900 font-sans flex flex-col overflow-x-hidden max-w-[500px] mx-auto shadow-2xl relative max-w-full pb-24 md:pb-8">
       
 
 

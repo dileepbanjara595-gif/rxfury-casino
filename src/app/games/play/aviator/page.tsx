@@ -184,11 +184,11 @@ export default function AviatorGamePage() {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-[#0a0f16] text-white flex flex-col font-sans">
+    <div className="min-h-screen bg-[#0a0f16] text-white flex flex-col font-sans max-w-full pb-24 md:pb-8">
 
 
       {/* Main Game Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto w-full max-w-full relative">
         
         {/* Left Panel: Game Canvas */}
         <div className="flex-1 flex flex-col relative bg-black shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]">

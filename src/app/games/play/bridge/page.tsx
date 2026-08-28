@@ -233,7 +233,7 @@ export default function BridgePage() {
     setGameState("betting");
   };
 
-  if (!mounted) return <div className="h-screen bg-gray-950 flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!mounted) return <div className="min-h-screen bg-gray-950 flex items-center justify-center max-w-full pb-24 md:pb-8"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
 
   const CardView = ({ card }: { card: Card }) => (
     <div className={`w-14 h-20 md:w-20 md:h-28 rounded-lg shadow-md border border-gray-200 bg-white flex flex-col items-center justify-between py-1 md:py-1.5 cursor-pointer hover:-translate-y-4 transition-transform ${card.color === 'red' ? 'text-red-600' : 'text-gray-900'}`}>
@@ -258,7 +258,7 @@ export default function BridgePage() {
   );
 
   return (
-    <div className="h-[100dvh] bg-[#050914] text-gray-100 font-sans flex flex-col overflow-hidden relative selection:bg-emerald-500/30">
+    <div className="min-h-[100dvh] bg-[#050914] text-gray-100 font-sans flex flex-col overflow-x-hidden relative selection:bg-emerald-500/30 pb-24 md:pb-8 max-w-full">
       
       {/* --- HEADER --- */}
       <header className="h-[60px] bg-[#0a0f16] border-b border-[#1f2937] px-4 flex items-center justify-between shrink-0 z-50 shadow-md">
