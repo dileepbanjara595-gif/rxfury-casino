@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       console.log(`[DEV MODE] Resend API Key not found. OTP for ${email} is ${otpCode}`);
     } else {
       const { data, error } = await resend.emails.send({
-        from: 'RXFURY <onboarding@resend.dev>',
+        from: 'RXFURY <noreply@rxfury.com>',
         to: email,
         subject: 'Your RXFURY Verification Code',
         html: `
