@@ -87,7 +87,7 @@ export default function ProfilePage() {
 
   const avatarSrc = anyUser?.profilePhoto 
     ? anyUser.profilePhoto 
-    : \https://api.dicebear.com/7.x/avataaars/svg?seed=\\;
+    : "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback";
 
   const stats = [
     { label: 'Total Games', value: statsData.totalGames.toLocaleString(), icon: Gamepad2, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -239,9 +239,9 @@ export default function ProfilePage() {
             {/* Gaming Statistics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {stats.map((stat, idx) => (
-                <div key={idx} className={\g-[#131824] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-gray-600 transition-colors\}>
-                  <div className={\bsolute top-0 right-0 w-24 h-24 \ rounded-bl-full blur-2xl group-hover:scale-110 transition-transform\}></div>
-                  <stat.icon className={\w-8 h-8 \ mb-4 relative z-10\} />
+                <div key={idx} className="bg-[#131824] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-gray-600 transition-colors">
+                  <div className="absolute top-0 right-0 w-24 h-24 rounded-bl-full blur-2xl group-hover:scale-110 transition-transform bg-white/5"></div>
+                  <stat.icon className={`w-8 h-8 mb-4 relative z-10 ${stat.color}`} />
                   <p className="text-gray-400 text-sm font-bold uppercase tracking-wider relative z-10">{stat.label}</p>
                   <p className="text-3xl font-black mt-1 relative z-10">{stat.value}</p>
                 </div>
@@ -278,20 +278,20 @@ export default function ProfilePage() {
                         <tr key={item.id} className="hover:bg-white/5 transition-colors group">
                           <td className="p-4">
                             <div className="flex items-center space-x-3">
-                              <div className={\p-2 rounded-lg bg-black/40 border border-gray-800 group-hover:border-gray-600 transition-colors\}>
-                                <ItemIcon className={\w-4 h-4 \\} />
+                              <div className="p-2 rounded-lg bg-black/40 border border-gray-800 group-hover:border-gray-600 transition-colors">
+                                <ItemIcon className={`w-4 h-4 ${color}`} />
                               </div>
                               <span className="font-bold">{item.type}</span>
                             </div>
                           </td>
-                          <td className={\p-4 font-black \\}>
+                          <td className={`p-4 font-black ${color}`}>
                             {item.amount.startsWith('+') ? '+' : '-'}{formatCurrency(convertFromBase(item.rawAmount, activeCurrency), activeCurrency)} {activeCurrency}
                           </td>
                           <td className="p-4 text-gray-400 text-sm">
                             {item.date}
                           </td>
                           <td className="p-4 text-right">
-                            <span className={\inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider \\}>
+                            <span className="inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/5">
                               {item.status}
                             </span>
                           </td>
