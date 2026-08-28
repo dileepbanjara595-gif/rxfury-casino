@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { Resend } from "resend";
 
 // Use Resend for emails
-const resend = new Resend(process.env.RESEND_API_KEY || 'dummy_key');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   try {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     // Send email via Resend
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RXFURY <noreply@rxfury.com>',
+        from: '"RXFURY" <noreply@rxfury.com>',
         to: email,
         subject: 'Your RXFURY Verification Code',
         html: `
@@ -85,3 +85,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error', details: error.message || String(error) }, { status: 500 });
   }
 }
+
