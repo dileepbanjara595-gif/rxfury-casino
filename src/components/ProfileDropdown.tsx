@@ -27,21 +27,26 @@ export default function ProfileDropdown() {
 
   const handleLogout = async () => {
     try {
+      // 1. Clear Supabase Session
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Logout Error:", error.message);
-        return;
+        console.error('Logout error:', error.message);
+        // We still continue to clear local session even if Supabase fails
       }
       
-      // Clear global state
+      // 2. Clear global state & local storage
       clearUser();
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
       
       setIsOpen(false);
       
-      // Redirect to homepage
-      router.push('/');
+      // 3. Clear NextAuth session (this redirects to / automatically)
+      const { signOut: nextAuthSignOut } = await import('next-auth/react');
+      await nextAuthSignOut({ callbackUrl: '/' });
     } catch (err) {
-      console.error("Unexpected error during logout:", err);
+      console.error('Unexpected error during logout:', err);
     }
   };
 

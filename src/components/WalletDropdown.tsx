@@ -86,8 +86,25 @@ export default function WalletDropdown() {
   const currencyList = Object.keys(CURRENCY_INFO) as Currency[];
 
   const handleLogout = async () => {
-    setIsOpen(false);
-    await supabase.auth.signOut();
+    try {
+      setIsOpen(false);
+      // 1. Clear Supabase Session
+      await supabase.auth.signOut();
+      
+      // 2. Clear global state & local storage
+      const { useUserStore } = await import('@/store/userStore');
+      useUserStore.getState().clearUser();
+      
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+      }
+      
+      // 3. Clear NextAuth session and redirect
+      const { signOut: nextAuthSignOut } = await import('next-auth/react');
+      await nextAuthSignOut({ callbackUrl: '/' });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   };
 
   return (
