@@ -101,6 +101,7 @@ export async function PUT(req: NextRequest) {
 
     const { firstName, lastName, dob, profilePhoto } = await req.json();
 
+    // 1. Update in Prisma (legacy/sync)
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
@@ -110,6 +111,27 @@ export async function PUT(req: NextRequest) {
         profilePhoto
       }
     });
+
+    // 2. Update in Supabase public.profiles
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
+
+    const { error: supabaseError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        first_name: firstName,
+        last_name: lastName,
+        dob: dob ? new Date(dob).toISOString() : null
+      })
+      .eq('id', session.user.id);
+
+    if (supabaseError) {
+      console.error("Supabase Profile Sync Error:", supabaseError);
+      // We log but don't fail the whole request if Prisma succeeded, or you could throw it.
+    }
 
     return NextResponse.json({
       success: true,
@@ -125,4 +147,3 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }
-
