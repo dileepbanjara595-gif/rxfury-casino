@@ -45,15 +45,25 @@ export default function ProfileDashboard() {
       {/* Background Glow */}
       <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-yellow-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6 relative z-10">
+      <div className="max-w-2xl mx-auto p-4 sm:p-6 pt-12 md:pt-16 space-y-6 relative z-10">
         
+        
+        {/* Back to Home Navigation */}
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors bg-white/5 p-2 rounded-xl hover:bg-white/10 border border-white/5 flex items-center">
+            <ChevronRight className="w-5 h-5 rotate-180 mr-1" />
+            <span className="text-sm font-bold tracking-widest uppercase">Games</span>
+          </Link>
+          <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 tracking-widest">DASHBOARD</span>
+        </div>
+
         {/* HEADER: User Info */}
         <div className="flex items-center space-x-4 p-4 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md shadow-lg">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)]">
+          <div className="w-16 h-16 shrink-0 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center p-0.5 shadow-[0_0_15px_rgba(234,179,8,0.4)]">
             <Image src={`${(session.user as any)?.profilePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.id}`}`} alt="Avatar" width={64} height={64} className="w-full h-full rounded-full bg-[#1a1d29]" />
           </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-black text-white">{(session.user as any)?.firstName || session.user.email?.split("@")[0] || "Player"}</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-black text-white truncate">{(session.user as any)?.firstName || session.user.email?.split("@")[0] || "Player"}</h2>
             <div className="flex items-center mt-1">
               <span className="text-sm font-bold text-gray-400 bg-black/40 px-2 py-0.5 rounded-md border border-white/5">
                 ID: {(session.user as any)?.systematicId}
@@ -64,7 +74,7 @@ export default function ProfileDashboard() {
               {copied && <span className="ml-2 text-xs text-green-400 font-bold">Copied!</span>}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right shrink-0">
             <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">
               VIP {(session.user as any)?.vipLevelId || 1}
             </div>

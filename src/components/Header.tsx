@@ -23,7 +23,7 @@ export default function Header() {
   const isGamePage = pathname?.includes('/games/play/');
 
   
-  if (pathname?.startsWith('/admin')) {
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/dashboard') || pathname?.startsWith('/profile')) {
     return null;
   }
 
