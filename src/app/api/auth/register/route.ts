@@ -1,79 +1,54 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
-// Helper to generate FURY-XXXXX ID
 const generateSystematicId = () => {
-  const randomNum = Math.floor(10000 + Math.random() * 90000); // 5 digit number
-  return 'FURY-' + randomNum;
+  const randomNum = Math.floor(10000 + Math.random() * 90000);
+  return `FURY-${randomNum}`;
 };
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { identifier, password, authMethod, promoCode, otp } = body;
+    const { identifier, password, otp, authMethod, promoCode } = body;
 
     if (!identifier || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    if (!otp) {
-      return NextResponse.json({ error: "OTP is required for registration" }, { status: 400 });
-    }
-
-    // 1. Verify OTP
-    const validOtp = await prisma.oTP.findFirst({
-      where: {
-        email: identifier,
-        code: otp,
-        isUsed: false,
-        expiresAt: { gt: new Date() } // Must not be expired
-      },
-      orderBy: { createdAt: 'desc' }
+    // 1. Check if user ALREADY exists and is fully registered
+    const existingUser = await prisma.user.findUnique({
+      where: { email: identifier },
     });
 
-    if (!validOtp) {
-      return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
-    }
-
-    // 2. Check existing user
-    let existingUser = null;
-    if (authMethod === "email") {
-      existingUser = await prisma.user.findUnique({
-        where: { email: identifier },
-      });
-    } else if (authMethod === "phone") {
-      existingUser = await prisma.user.findUnique({
-        where: { phone: identifier },
-      });
-    } else {
-      existingUser = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: identifier },
-            { phone: identifier },
-          ],
-        },
-      });
-    }
-
     if (existingUser) {
-      if (existingUser.isVerified) {
-        return NextResponse.json({ error: "User already exists and is verified. Please log in." }, { status: 409 });
-      }
-      // If user exists but is NOT verified, we will update their record instead of failing.
+      return NextResponse.json({ error: "User already exists. Please sign in." }, { status: 409 });
     }
 
-    // Hash password
+    // NOTE: Yaha aap apna OTP verification check laga sakte hain 
+    // (Jaise agar aapne OTP table me OTP store kiya hai toh use verify karein)
+
+    // 2. Hash password safely
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Check for Promo Code
+    // 3. Generate Unique Systematic ID
+    let systematicId = generateSystematicId();
+    let isUnique = false;
+    while (!isUnique) {
+      const checkId = await prisma.user.findUnique({ where: { systematicId } });
+      if (!checkId) {
+        isUnique = true;
+      } else {
+        systematicId = generateSystematicId();
+      }
+    }
+
+    // 4. Handle Promo Code / Bonus
     let initialBonus = 0;
     if (promoCode && promoCode.toLowerCase() === "fury50") {
       initialBonus = 50;
     }
 
-    // Check for Referral
     let referredById = null;
     if (promoCode && promoCode.toLowerCase() !== "fury50") {
       const referrer = await prisma.user.findUnique({
@@ -84,65 +59,29 @@ export async function POST(req: Request) {
       }
     }
 
-    let userRecord;
-
-    if (existingUser) {
-      // 3A. Update unverified user
-      userRecord = await prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          passwordHash,
-          isVerified: true,
-          bonusWalletBalance: initialBonus,
-          referredById
-        }
-      });
-    } else {
-      // 3B. Generate Unique ID and create new user
-      let systematicId = generateSystematicId();
-      let isUnique = false;
-      while (!isUnique) {
-        const checkId = await prisma.user.findUnique({ where: { systematicId } });
-        if (!checkId) {
-          isUnique = true;
-        } else {
-          systematicId = generateSystematicId();
-        }
-      }
-
-      userRecord = await prisma.user.create({
-        data: {
-          systematicId,
-          email: authMethod === "email" ? identifier : null,
-          phone: authMethod === "phone" ? identifier : null,
-          passwordHash,
-          bonusWalletBalance: initialBonus,
-          referredById,
-          isVerified: true
-        },
-      });
-    }
-
-    // 4. Mark OTP as used
-    await prisma.oTP.update({
-      where: { id: validOtp.id },
-      data: { isUsed: true }
+    // 5. Create NEW User in Database ONLY NOW
+    const newUser = await prisma.user.create({
+      data: {
+        systematicId,
+        email: authMethod === "email" ? identifier : null,
+        phone: authMethod === "phone" ? identifier : null,
+        passwordHash,
+        bonusWalletBalance: initialBonus,
+        referredById,
+      },
     });
 
     return NextResponse.json({
-      message: "User registered and verified successfully",
+      message: "User registered successfully",
       user: {
-        id: userRecord.id,
-        systematicId: userRecord.systematicId,
-        email: userRecord.email,
-        phone: userRecord.phone,
-        bonusWalletBalance: userRecord.bonusWalletBalance,
-        isVerified: userRecord.isVerified
+        id: newUser.id,
+        systematicId: newUser.systematicId,
+        email: newUser.email,
       }
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Registration error:", error);
-    return NextResponse.json({ error: "Internal Server Error", details: error.message || String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
