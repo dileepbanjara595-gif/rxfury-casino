@@ -129,9 +129,11 @@ export default function AuthModal() {
     setStatus(null);
 
     try {
-      throw new Error('Forgot password flow not fully implemented yet');
-
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
       
+      if (error) {
+        throw new Error(error.message);
+      }
       
       setRecoveryOtpSent(true);
       setStatus({ type: 'success', message: 'Recovery OTP Sent! Please check your email.' });
@@ -214,14 +216,24 @@ export default function AuthModal() {
         }
 
         // 1. Verify Recovery OTP
-        throw new Error('OTP verify not fully implemented');
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token: otp,
+          type: 'recovery'
+        });
 
-        
+        if (verifyError) {
+          throw new Error(verifyError.message);
+        }
 
         // 2. Update to New Password (the session is active after verifyOtp)
-        throw new Error('Update user not fully implemented');
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword
+        });
 
-        
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
 
         setStatus({ 
           type: 'success', 
