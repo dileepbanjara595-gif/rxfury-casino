@@ -44,10 +44,13 @@ export async function POST(req: Request) {
       }
     });
 
-    // Send email via Resend
+    // Check for API Key
     if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === 'dummy_key') {
-      console.log(`[DEV MODE] Resend API Key not found. OTP for ${email} is ${otpCode}`);
-    } else {
+      return NextResponse.json({ error: 'Server configuration error', details: 'RESEND_API_KEY is not configured.' }, { status: 500 });
+    }
+
+    // Send email via Resend
+    try {
       const { data, error } = await resend.emails.send({
         from: 'RXFURY <noreply@rxfury.com>',
         to: email,
@@ -68,9 +71,12 @@ export async function POST(req: Request) {
       });
 
       if (error) {
-        console.error("Resend API Error:", error);
-        return NextResponse.json({ error: 'Failed to send OTP via email service.', details: error.message }, { status: 500 });
+        console.error("Resend API Error object:", error);
+        return NextResponse.json({ error: 'Failed to send OTP email.', details: error.message }, { status: 500 });
       }
+    } catch (resendErr: any) {
+      console.error("Resend execution error:", resendErr);
+      return NextResponse.json({ error: 'Failed to execute email service.', details: resendErr.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully' }, { status: 200 });
