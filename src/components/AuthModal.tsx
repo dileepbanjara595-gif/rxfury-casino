@@ -5,6 +5,7 @@ import { useAuthModalStore } from '@/store/authModalStore';
 import { X, Mail, Lock, ShieldCheck, ArrowRight, KeyRound } from 'lucide-react';
 import { signIn } from "next-auth/react";
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function AuthModal() {
   const { isOpen, view, closeModal, setView } = useAuthModalStore();
@@ -59,13 +60,19 @@ export default function AuthModal() {
     setStatus(null);
 
     try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, type: 'register' })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Failed to send OTP');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Supabase security feature: if identities is empty, the user might already exist.
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        throw new Error('User already exists. Please log in instead.');
+      }
 
       setOtpSent(true);
       setCountdown(30);
@@ -88,15 +95,14 @@ export default function AuthModal() {
     setStatus(null);
 
     try {
-            const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, type: 'register' })
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Failed to resend OTP');
 
-      
+      if (error) {
+        throw new Error(error.message);
+      }
       
       setCountdown(30);
       setStatus({ type: 'success', message: 'OTP Resent successfully! Please check your email inbox (and spam).' });
@@ -174,25 +180,15 @@ export default function AuthModal() {
           return;
         }
 
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: email, password, authMethod: 'email', otp })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ? data.error + (data.details ? ' - ' + data.details : '') : 'Registration failed');
-
-        // Automatically sign in after registration
-        const signInRes = await signIn("credentials", {
-          redirect: false,
+        const { data, error } = await supabase.auth.verifyOtp({
           email,
-          password
+          token: otp,
+          type: 'signup'
         });
-        if (signInRes?.error) {
-           console.error("Auto sign-in failed:", signInRes.error);
-        }
 
-        
+        if (error) {
+          throw new Error(error.message);
+        }
 
         setStatus({ 
           type: 'success', 
@@ -466,6 +462,7 @@ export default function AuthModal() {
     </div>
   );
 }
+
 
 
 
