@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         amount: tx.type === 'DEPOSIT' || tx.type === 'BONUS' || tx.type === 'RAKEBACK' ? '+' + tx.amount : '-' + tx.amount,
         rawAmount: tx.amount,
         date: tx.createdAt,
-        status: tx.status === 'COMPLETED' ? 'Completed' : tx.status === 'PENDING' ? 'Processing' : 'Failed',
+        status: tx.status === 'APPROVED' ? 'Completed' : tx.status === 'PENDING' ? 'Processing' : 'Failed',
         isGame: false
       })),
       ...recentGames.map(game => ({
@@ -125,3 +125,4 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }
+
