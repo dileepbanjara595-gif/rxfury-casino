@@ -82,7 +82,7 @@ export default function ProfilePage() {
     return <div className="min-h-screen bg-[#1a1d29] flex items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div></div>;
   }
 
-  const shortUserId = supabaseUsername || (user as any).systematicId || 'FURY-' + user.id.substring(0, 4).toUpperCase();
+  const shortUserId = supabaseUsername || '...';
   const anyUser = user as any;
   
   const displayName = anyUser?.firstName ? (anyUser.firstName + ' ' + (anyUser.lastName || '')).trim() : 'Player ' + user.id.substring(0, 4);

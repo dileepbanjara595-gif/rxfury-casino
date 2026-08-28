@@ -11,6 +11,26 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id;
+    const supabaseId = (session.user as any).supabaseId;
+
+    let supabaseUsername = null;
+    if (supabaseId) {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      );
+      
+      const { data: profileData, error: profileErr } = await supabaseAdmin
+        .from('profiles')
+        .select('username')
+        .eq('id', supabaseId)
+        .single();
+        
+      if (profileData?.username) {
+        supabaseUsername = profileData.username;
+      }
+    }
 
     // 1. Fetch total games count
     const totalGames = await prisma.gameHistory.count({
@@ -84,7 +104,8 @@ export async function GET(req: NextRequest) {
         winRate
       },
       activityHistory: finalActivity,
-      memberSince
+      memberSince,
+      supabaseUsername
     });
   } catch (error) {
     console.error("Profile GET error:", error);
@@ -100,6 +121,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const { firstName, lastName, dob, profilePhoto } = await req.json();
+    const supabaseId = (session.user as any).supabaseId;
 
     // 1. Update in Prisma (legacy/sync)
     const updatedUser = await prisma.user.update({
@@ -113,24 +135,25 @@ export async function PUT(req: NextRequest) {
     });
 
     // 2. Update in Supabase public.profiles
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
+    if (supabaseId) {
+      const { createClient } = require('@supabase/supabase-js');
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+      );
 
-    const { error: supabaseError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        first_name: firstName,
-        last_name: lastName,
-        dob: dob ? new Date(dob).toISOString() : null
-      })
-      .eq('id', session.user.id);
+      const { error: supabaseError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          dob: dob ? new Date(dob).toISOString() : null
+        })
+        .eq('id', supabaseId);
 
-    if (supabaseError) {
-      console.error("Supabase Profile Sync Error:", supabaseError);
-      // We log but don't fail the whole request if Prisma succeeded, or you could throw it.
+      if (supabaseError) {
+        console.error("Supabase Profile Sync Error:", supabaseError);
+      }
     }
 
     return NextResponse.json({
