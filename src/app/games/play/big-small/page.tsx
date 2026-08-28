@@ -54,32 +54,34 @@ export default function WingoGamePage() {
   }, []);
 
   useEffect(() => {
-    if (socket) {
-      socket.emit("join_game", activeMode);
+      setMounted(true);
+      let isMounted = true;
 
-      const handleTick = (data: any) => {
-        if (data.mode === activeMode) {
-          setPeriodId(data.periodId);
-          setTimeLeft(data.timeLeft);
-          setHistory(data.history || []);
-          
-          if (data.timeLeft <= 3) {
-            setShowBetModal(false); // Force close bet modal during countdown freeze
+      const pollState = async () => {
+        try {
+          const res = await fetch('/api/games/state?game=wingo&mode=' + activeMode);
+          if (res.ok && isMounted) {
+            const data = await res.json();
+            setPeriodId(data.periodId);
+            setTimeLeft(Math.floor(data.timeLeft));
+            
+            if (data.timeLeft <= 3) {
+              setShowBetModal(false);
+            }
           }
+        } catch (e) {
+          console.error("Failed to sync wingo state:", e);
         }
       };
-      socket.on("game_tick", handleTick);
 
-      socket.on("game_result", (data: any) => {
-        // We could show a winning popup here if the user won
-      });
+      pollState();
+      const interval = setInterval(pollState, 1000);
 
       return () => {
-        socket.off("game_tick", handleTick);
-        socket.off("game_result");
+        isMounted = false;
+        clearInterval(interval);
       };
-    }
-  }, [socket, activeMode]);
+    }, [activeMode]);
 
   const handleOpenBet = (type: string, value: string, color: string) => {
     if (timeLeft <= 3) return; // Prevent betting in last 3 seconds

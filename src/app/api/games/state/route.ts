@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
     if (game === "aviator") {
       return await handleAviatorState();
     } else if (game === "wingo") {
-      return await handleWingoState();
+      const mode = searchParams.get("mode") || "wingo_1m";
+      return await handleWingoState(mode);
     }
 
     return NextResponse.json({ error: "Unsupported game" }, { status: 400 });
@@ -98,8 +99,14 @@ async function handleAviatorState() {
   });
 }
 
-async function handleWingoState() {
-  const duration = 60; 
+async function handleWingoState(mode: string) {
+  let duration = 60;
+  if (mode === "wingo_10s") duration = 10;
+  else if (mode === "wingo_30s") duration = 30;
+  else if (mode === "wingo_1m") duration = 60;
+  else if (mode === "wingo_5m") duration = 300;
+  else if (mode === "wingo_10m") duration = 600;
+   
   const now = new Date();
   
   const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
