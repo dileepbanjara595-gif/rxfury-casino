@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useDepositModalStore } from '@/store/depositModalStore';
 
 export default function ProfileDropdown() {
-  const { user, profileData } = useUserStore();
+  const { user, profileData, clearUser } = useUserStore();
   const { openModal } = useDepositModalStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -26,8 +26,23 @@ export default function ProfileDropdown() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsOpen(false);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Logout Error:", error.message);
+        return;
+      }
+      
+      // Clear global state
+      clearUser();
+      
+      setIsOpen(false);
+      
+      // Redirect to homepage
+      router.push('/');
+    } catch (err) {
+      console.error("Unexpected error during logout:", err);
+    }
   };
 
   const navigateTo = (path: string) => {
