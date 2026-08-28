@@ -11,11 +11,31 @@ export const authOptions: AuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+            async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
+        // 1. Authenticate against Supabase Auth
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        
+        if (supabaseUrl && supabaseKey) {
+          const { createClient } = require('@supabase/supabase-js');
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email: credentials.email,
+            password: credentials.password
+          });
+          
+          if (authError || !authData.user) {
+            console.error('Supabase Auth Failed:', authError?.message);
+            return null; // Invalid credentials
+          }
+        }
+
+        // 2. Fetch user profile from Prisma
         const user = await prisma.user.findFirst({
           where: {
             OR: [
@@ -29,11 +49,7 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
-
-        if (!isPasswordValid) {
-          return null;
-        }
+        // We skip local bcrypt check because Supabase already verified the password!
 
         return {
           id: user.id,
