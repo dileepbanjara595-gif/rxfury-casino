@@ -259,7 +259,7 @@ export default function AviatorGamePage() {
           
           <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#131824]">
              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Session ID:</span>
-             <span className="text-xs font-mono text-gray-400">{syncState.currentSessionId || "Connecting..."}</span>
+             <span className="text-xs font-mono text-gray-400">Provably Fair</span>
           </div>
 
           <div className="p-6 flex-1 flex flex-col justify-center">
