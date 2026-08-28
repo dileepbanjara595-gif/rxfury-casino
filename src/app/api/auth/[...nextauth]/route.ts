@@ -16,58 +16,59 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
-        // 1. Fetch user profile from Prisma
-        const user = await prisma.user.findFirst({
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        
+        if (!supabaseUrl || !supabaseKey) {
+          console.error('Missing Supabase Environment Variables');
+          return null;
+        }
+
+        const { createClient } = require('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        // 1. Strictly authenticate via Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password
+        });
+        
+        if (authError || !authData.user) {
+          console.error('Supabase Auth Failed:', authError?.message);
+          return null;
+        }
+        
+        const supabaseId = authData.user.id;
+        const email = authData.user.email || credentials.email;
+
+        // 2. Fetch or Create Prisma User Sync
+        let user = await prisma.user.findFirst({
           where: {
             OR: [
-              { email: credentials.email },
-              { phone: credentials.email }
+              { email: email },
+              { phone: email }
             ]
           }
         });
 
         if (!user) {
-          return null;
-        }
-
-        // 2. Try Supabase Auth
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        
-        let supabaseId = null;
-        let isAuthenticated = false;
-
-        if (supabaseUrl && supabaseKey) {
-          const { createClient } = require('@supabase/supabase-js');
-          const supabase = createClient(supabaseUrl, supabaseKey);
+          // Auto-create the user in Prisma if they registered via Supabase but Prisma wasn't synced
+          const generateSystematicId = () => {
+            return 'FURY-' + Math.random().toString(36).substring(2, 7).toUpperCase();
+          };
           
-          const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: credentials.email,
-            password: credentials.password
+          user = await prisma.user.create({
+            data: {
+              email: email,
+              systematicId: generateSystematicId(),
+              passwordHash: 'SUPABASE_AUTH',
+              role: 'USER',
+            }
           });
-          
-          if (!authError && authData.user) {
-            isAuthenticated = true;
-            supabaseId = authData.user.id;
-          } else {
-            console.error('Supabase Auth Failed, checking local DB fallback:', authError?.message);
-          }
-        }
-
-        // 3. Fallback to local bcrypt validation
-        if (!isAuthenticated && (user as any).password) {
-          const isPasswordValid = await bcrypt.compare(credentials.password, (user as any).password);
-          if (isPasswordValid) {
-            isAuthenticated = true;
-          }
-        }
-
-        if (!isAuthenticated) {
-          return null; // Both Supabase and Local auth failed
         }
 
         return {
-          id: user.id,
+          id: user.id, // Prisma ID
           systematicId: user.systematicId,
           email: user.email,
           role: user.role,
