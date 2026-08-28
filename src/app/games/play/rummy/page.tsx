@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrencyStore, convertFromBase, convertToBase, CURRENCY_SYMBOLS, formatCurrency } from '@/store/currencyStore';
 import { useState, useEffect } from "react";
 import { ArrowLeft, User, Coins, Crown, Spade, Heart, Club, Diamond, LogOut, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import Link from "next/link";
@@ -40,7 +41,41 @@ const generateMockHand = (count: number = 13): PlayingCard[] => {
 
 export default function RummyGamePage() {
   const [mounted, setMounted] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(24500);
+  
+  const { activeCurrency, baseBalance, setBaseBalance } = useCurrencyStore();
+  const walletBalance = convertFromBase(baseBalance, activeCurrency);
+  
+  // Shim for local state updates (ideally should be replaced by generic API calls)
+  const setWalletBalance = (updater: any) => {
+    const newVal = typeof updater === 'function' ? updater(walletBalance) : updater;
+    setBaseBalance(convertToBase(newVal, activeCurrency));
+    
+    // Fire and forget generic logging
+    if (newVal < walletBalance) {
+       const betAmt = walletBalance - newVal;
+       if (betAmt > 0) {
+         fetch('/api/games/generic/bet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ gameName: 'generic', betAmount: convertToBase(betAmt, activeCurrency) })
+         }).then(res=>res.json()).then(data=>{
+            if(data.historyId) window.localStorage.setItem('lastGameHistoryId', data.historyId);
+         }).catch(console.error);
+       }
+    } else if (newVal > walletBalance) {
+       const winAmt = newVal - walletBalance;
+       const historyId = window.localStorage.getItem('lastGameHistoryId');
+       if (winAmt > 0 && historyId) {
+         fetch('/api/games/generic/result', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmt, activeCurrency) })
+         }).catch(console.error);
+         window.localStorage.removeItem('lastGameHistoryId');
+       }
+    }
+  };
+
   const [phase, setPhase] = useState<GamePhase>("lobby");
   const [pointValue, setPointValue] = useState<PointValue>(10);
   
@@ -71,7 +106,7 @@ export default function RummyGamePage() {
       alert(`Insufficient balance! You need ₹${entryFee} to enter this table.`);
       return;
     }
-    setWalletBalance(prev => prev - entryFee);
+    setWalletBalance((prev: any) => prev - entryFee);
     setPlayerHand(generateMockHand(13));
     setShowVictoryModal(false);
     setIsPlayerTurn(true);
@@ -130,7 +165,7 @@ export default function RummyGamePage() {
     if (playerHand.length === 14) {
       // Mock valid declaration
       const winnings = pointValue * 80 * 2.5; // Example 2.5x total pool win
-      setWalletBalance(prev => prev + winnings);
+      setWalletBalance((prev: any) => prev + winnings);
       setShowVictoryModal(true);
     }
   };

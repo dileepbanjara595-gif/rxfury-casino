@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrencyStore, convertFromBase, convertToBase, CURRENCY_SYMBOLS, formatCurrency } from '@/store/currencyStore';
 import { useState, useEffect } from "react";
 import { ArrowLeft, Coins, Crown, Spade, Heart, Club, Diamond, Trophy, User } from "lucide-react";
 import Link from "next/link";
@@ -78,7 +79,41 @@ export default function BridgePage() {
 
   // Betting & Wallet State
   const [gameState, setGameState] = useState<"betting" | "bidding" | "playing" | "gameOver">("betting");
-  const [walletBalance, setWalletBalance] = useState(34500);
+  
+  const { activeCurrency, baseBalance, setBaseBalance } = useCurrencyStore();
+  const walletBalance = convertFromBase(baseBalance, activeCurrency);
+  
+  // Shim for local state updates (ideally should be replaced by generic API calls)
+  const setWalletBalance = (updater: any) => {
+    const newVal = typeof updater === 'function' ? updater(walletBalance) : updater;
+    setBaseBalance(convertToBase(newVal, activeCurrency));
+    
+    // Fire and forget generic logging
+    if (newVal < walletBalance) {
+       const betAmt = walletBalance - newVal;
+       if (betAmt > 0) {
+         fetch('/api/games/generic/bet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ gameName: 'generic', betAmount: convertToBase(betAmt, activeCurrency) })
+         }).then(res=>res.json()).then(data=>{
+            if(data.historyId) window.localStorage.setItem('lastGameHistoryId', data.historyId);
+         }).catch(console.error);
+       }
+    } else if (newVal > walletBalance) {
+       const winAmt = newVal - walletBalance;
+       const historyId = window.localStorage.getItem('lastGameHistoryId');
+       if (winAmt > 0 && historyId) {
+         fetch('/api/games/generic/result', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmt, activeCurrency) })
+         }).catch(console.error);
+         window.localStorage.removeItem('lastGameHistoryId');
+       }
+    }
+  };
+
   const [currentBet, setCurrentBet] = useState(0);
 
   // Bridge State
@@ -149,13 +184,13 @@ export default function BridgePage() {
   // --- ACTIONS ---
   const addChip = (amount: number) => {
     if (walletBalance >= amount) {
-      setWalletBalance(prev => prev - amount);
+      setWalletBalance((prev: any) => prev - amount);
       setCurrentBet(prev => prev + amount);
     }
   };
 
   const clearBet = () => {
-    setWalletBalance(prev => prev + currentBet);
+    setWalletBalance((prev: any) => prev + currentBet);
     setCurrentBet(0);
   };
 
@@ -224,7 +259,7 @@ export default function BridgePage() {
     // Mock win condition: Did we get 9 tricks?
     if (tricksUs >= Math.max(1, Math.floor(Math.random() * 5 + 4))) {
       // Win
-      setWalletBalance(prev => prev + (currentBet * 2));
+      setWalletBalance((prev: any) => prev + (currentBet * 2));
     }
   };
 

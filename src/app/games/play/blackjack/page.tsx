@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrencyStore, convertFromBase, convertToBase, CURRENCY_SYMBOLS, formatCurrency } from '@/store/currencyStore';
 import { useState, useEffect } from "react";
 import { ArrowLeft, Coins, Crown, Spade, Heart, Club, Diamond, Plus } from "lucide-react";
 import Link from "next/link";
@@ -57,7 +58,41 @@ const calculateScore = (hand: PlayingCard[]) => {
 export default function BlackjackPage() {
   const [mounted, setMounted] = useState(false);
   
-  const [walletBalance, setWalletBalance] = useState(25000);
+  
+  const { activeCurrency, baseBalance, setBaseBalance } = useCurrencyStore();
+  const walletBalance = convertFromBase(baseBalance, activeCurrency);
+  
+  // Shim for local state updates (ideally should be replaced by generic API calls)
+  const setWalletBalance = (updater: any) => {
+    const newVal = typeof updater === 'function' ? updater(walletBalance) : updater;
+    setBaseBalance(convertToBase(newVal, activeCurrency));
+    
+    // Fire and forget generic logging
+    if (newVal < walletBalance) {
+       const betAmt = walletBalance - newVal;
+       if (betAmt > 0) {
+         fetch('/api/games/generic/bet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ gameName: 'generic', betAmount: convertToBase(betAmt, activeCurrency) })
+         }).then(res=>res.json()).then(data=>{
+            if(data.historyId) window.localStorage.setItem('lastGameHistoryId', data.historyId);
+         }).catch(console.error);
+       }
+    } else if (newVal > walletBalance) {
+       const winAmt = newVal - walletBalance;
+       const historyId = window.localStorage.getItem('lastGameHistoryId');
+       if (winAmt > 0 && historyId) {
+         fetch('/api/games/generic/result', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmt, activeCurrency) })
+         }).catch(console.error);
+         window.localStorage.removeItem('lastGameHistoryId');
+       }
+    }
+  };
+
   const [currentBet, setCurrentBet] = useState(0);
   
   const [deck, setDeck] = useState<PlayingCard[]>([]);
@@ -77,13 +112,13 @@ export default function BlackjackPage() {
 
   const addChip = (amount: number) => {
     if (walletBalance >= amount) {
-      setWalletBalance(prev => prev - amount);
+      setWalletBalance((prev: any) => prev - amount);
       setCurrentBet(prev => prev + amount);
     }
   };
 
   const clearBet = () => {
-    setWalletBalance(prev => prev + currentBet);
+    setWalletBalance((prev: any) => prev + currentBet);
     setCurrentBet(0);
   };
 
@@ -140,7 +175,7 @@ export default function BlackjackPage() {
 
   const doubleDown = () => {
     if (walletBalance >= currentBet) {
-      setWalletBalance(prev => prev - currentBet);
+      setWalletBalance((prev: any) => prev - currentBet);
       setCurrentBet(prev => prev * 2);
       
       let currentDeck = [...deck];
@@ -216,11 +251,11 @@ export default function BlackjackPage() {
     if (type === "win") {
       setResultMessage("YOU WIN!");
       setResultType("win");
-      setWalletBalance(prev => prev + (currentBet * 2));
+      setWalletBalance((prev: any) => prev + (currentBet * 2));
     } else if (type === "blackjack") {
       setResultMessage("BLACKJACK!");
       setResultType("blackjack");
-      setWalletBalance(prev => prev + (currentBet * 2.5)); // 3:2 payout
+      setWalletBalance((prev: any) => prev + (currentBet * 2.5)); // 3:2 payout
     } else if (type === "loss") {
       setResultMessage("DEALER WINS");
       setResultType("loss");
@@ -230,7 +265,7 @@ export default function BlackjackPage() {
     } else {
       setResultMessage("PUSH");
       setResultType("push");
-      setWalletBalance(prev => prev + currentBet);
+      setWalletBalance((prev: any) => prev + currentBet);
     }
   };
 

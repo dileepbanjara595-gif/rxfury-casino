@@ -71,7 +71,16 @@ export default function ChickenRoad() {
     });
 
     // Deduct bet from global balance
+    
     setBaseBalance(baseBalance - convertToBase(bet, activeCurrency));
+    fetch('/api/games/generic/bet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameName: 'chicken-road', betAmount: convertToBase(bet, activeCurrency) })
+    }).then(res=>res.json()).then(data=>{
+      if(data.historyId) window.localStorage.setItem('chickenRoadHistoryId', data.historyId);
+    }).catch(console.error);
+
     
     setFirePositions(newFires);
     setRevealedGrates([]);
@@ -89,7 +98,18 @@ export default function ChickenRoad() {
       // Collision
       setRevealedGrates(prev => [...prev, { col: colIdx, row: rowIdx, type: 'fire' }]);
       setChickenPosition({ col: colIdx, row: rowIdx });
-      setGameStatus('crashed');
+      
+        setGameStatus('crashed');
+        const historyId = window.localStorage.getItem('chickenRoadHistoryId');
+        if (historyId) {
+          fetch('/api/games/generic/result', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ historyId, winLossStatus: 'LOSS', payoutAmount: 0 })
+          }).catch(console.error);
+          window.localStorage.removeItem('chickenRoadHistoryId');
+        }
+
       
       // Reveal all other fires in this column for transparency
       firePositions[colIdx].forEach(fireRow => {
@@ -119,7 +139,18 @@ export default function ChickenRoad() {
     const winAmount = Number(betAmount) * mult;
     
     // Add winnings to global balance
+    
     setBaseBalance(baseBalance + convertToBase(winAmount, activeCurrency));
+    const historyId = window.localStorage.getItem('chickenRoadHistoryId');
+    if (historyId) {
+      fetch('/api/games/generic/result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmount, activeCurrency) })
+      }).catch(console.error);
+      window.localStorage.removeItem('chickenRoadHistoryId');
+    }
+
     
     setGameStatus('cashed_out');
   };

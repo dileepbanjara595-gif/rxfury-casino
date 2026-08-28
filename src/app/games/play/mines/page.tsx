@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrencyStore, convertFromBase, convertToBase, CURRENCY_SYMBOLS, formatCurrency } from '@/store/currencyStore';
 import { useState, useEffect } from "react";
 import { ArrowLeft, Gem, Bomb, Coins, Settings } from "lucide-react";
 import Link from "next/link";
@@ -7,7 +8,41 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function MinesGamePage() {
   const [mounted, setMounted] = useState(false);
-  const [walletBalance, setWalletBalance] = useState(10000);
+  
+  const { activeCurrency, baseBalance, setBaseBalance } = useCurrencyStore();
+  const walletBalance = convertFromBase(baseBalance, activeCurrency);
+  
+  // Shim for local state updates (ideally should be replaced by generic API calls)
+  const setWalletBalance = (updater: any) => {
+    const newVal = typeof updater === 'function' ? updater(walletBalance) : updater;
+    setBaseBalance(convertToBase(newVal, activeCurrency));
+    
+    // Fire and forget generic logging
+    if (newVal < walletBalance) {
+       const betAmt = walletBalance - newVal;
+       if (betAmt > 0) {
+         fetch('/api/games/generic/bet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ gameName: 'generic', betAmount: convertToBase(betAmt, activeCurrency) })
+         }).then(res=>res.json()).then(data=>{
+            if(data.historyId) window.localStorage.setItem('lastGameHistoryId', data.historyId);
+         }).catch(console.error);
+       }
+    } else if (newVal > walletBalance) {
+       const winAmt = newVal - walletBalance;
+       const historyId = window.localStorage.getItem('lastGameHistoryId');
+       if (winAmt > 0 && historyId) {
+         fetch('/api/games/generic/result', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmt, activeCurrency) })
+         }).catch(console.error);
+         window.localStorage.removeItem('lastGameHistoryId');
+       }
+    }
+  };
+
   const [betAmount, setBetAmount] = useState<number | "">(100);
   const [minesCount, setMinesCount] = useState(3);
   const [gameState, setGameState] = useState<"idle" | "playing" | "crashed" | "cashed_out">("idle");
@@ -43,7 +78,7 @@ export default function MinesGamePage() {
         return;
       }
       
-      setWalletBalance(prev => prev - Number(betAmount));
+      setWalletBalance((prev: any) => prev - Number(betAmount));
       
       const newGrid = Array(25).fill({ isMine: false, revealed: false });
       let minesPlaced = 0;
@@ -59,7 +94,7 @@ export default function MinesGamePage() {
       setGameState("playing");
     } else if (gameState === "playing") {
       if (safeRevealedCount > 0) {
-        setWalletBalance(prev => prev + currentWinnings);
+        setWalletBalance((prev: any) => prev + currentWinnings);
         setGameState("cashed_out");
         setGrid(prev => prev.map(cell => ({ ...cell, revealed: true })));
       }
@@ -82,7 +117,7 @@ export default function MinesGamePage() {
       
       if (safeRevealedCount + 1 === 25 - minesCount) {
         const winAmount = Number(betAmount) * calculateMultiplier(minesCount, safeRevealedCount + 1);
-        setWalletBalance(prev => prev + winAmount);
+        setWalletBalance((prev: any) => prev + winAmount);
         setGameState("cashed_out");
         setGrid(newGrid.map(c => ({ ...c, revealed: true })));
       }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCurrencyStore, convertFromBase, convertToBase, CURRENCY_SYMBOLS, formatCurrency } from '@/store/currencyStore';
 import { useState, useEffect } from "react";
 import { ArrowLeft, RotateCcw, Trophy, Clock, Play, Pause, Coins } from "lucide-react";
 import Link from "next/link";
@@ -73,7 +74,41 @@ export default function SolitairePage() {
 
   // Betting & Wallet State
   const [gameState, setGameState] = useState<"betting" | "playing" | "victory">("betting");
-  const [walletBalance, setWalletBalance] = useState(25000);
+  
+  const { activeCurrency, baseBalance, setBaseBalance } = useCurrencyStore();
+  const walletBalance = convertFromBase(baseBalance, activeCurrency);
+  
+  // Shim for local state updates (ideally should be replaced by generic API calls)
+  const setWalletBalance = (updater: any) => {
+    const newVal = typeof updater === 'function' ? updater(walletBalance) : updater;
+    setBaseBalance(convertToBase(newVal, activeCurrency));
+    
+    // Fire and forget generic logging
+    if (newVal < walletBalance) {
+       const betAmt = walletBalance - newVal;
+       if (betAmt > 0) {
+         fetch('/api/games/generic/bet', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ gameName: 'generic', betAmount: convertToBase(betAmt, activeCurrency) })
+         }).then(res=>res.json()).then(data=>{
+            if(data.historyId) window.localStorage.setItem('lastGameHistoryId', data.historyId);
+         }).catch(console.error);
+       }
+    } else if (newVal > walletBalance) {
+       const winAmt = newVal - walletBalance;
+       const historyId = window.localStorage.getItem('lastGameHistoryId');
+       if (winAmt > 0 && historyId) {
+         fetch('/api/games/generic/result', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ historyId, winLossStatus: 'WIN', payoutAmount: convertToBase(winAmt, activeCurrency) })
+         }).catch(console.error);
+         window.localStorage.removeItem('lastGameHistoryId');
+       }
+    }
+  };
+
   const [currentBet, setCurrentBet] = useState(0);
 
   // Solitaire State
@@ -108,7 +143,7 @@ export default function SolitairePage() {
       // Fallback cheat check for rapid testing (if score hits 5000 arbitrarily, but we rely on foundations)
       if (isWon) {
         setGameState("victory");
-        setWalletBalance(prev => prev + (currentBet * 2));
+        setWalletBalance((prev: any) => prev + (currentBet * 2));
       }
     }
   }, [foundations, mounted, gameState, currentBet]);
@@ -117,13 +152,13 @@ export default function SolitairePage() {
   
   const addChip = (amount: number) => {
     if (walletBalance >= amount) {
-      setWalletBalance(prev => prev - amount);
+      setWalletBalance((prev: any) => prev - amount);
       setCurrentBet(prev => prev + amount);
     }
   };
 
   const clearBet = () => {
-    setWalletBalance(prev => prev + currentBet);
+    setWalletBalance((prev: any) => prev + currentBet);
     setCurrentBet(0);
   };
 
