@@ -1,12 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { ShieldAlert, Save, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ShieldAlert, Save, AlertTriangle, CheckCircle } from "lucide-react";
 
 export default function AdminRiskPage() {
   const [aviatorRTP, setAviatorRTP] = useState(97);
   const [minesRTP, setMinesRTP] = useState(96.5);
   const [k3RTP, setK3RTP] = useState(98);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  useEffect(() => {
+    const fetchRTP = async () => {
+      try {
+        const res = await fetch("/api/admin/risk");
+        if (res.ok) {
+          const data = await res.json();
+          setAviatorRTP(data.aviatorRTP);
+          setMinesRTP(data.minesRTP);
+          setK3RTP(data.k3RTP);
+        }
+      } catch (error) {
+        console.error("Failed to fetch RTP settings");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRTP();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/risk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aviatorRTP, minesRTP, k3RTP }),
+      });
+      if (res.ok) {
+        setMessage({ type: 'success', text: 'Global RTP settings updated successfully.' });
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update settings.' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'An error occurred while saving.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6 text-gray-400">Loading risk parameters...</div>;
+  }
   
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -19,10 +66,21 @@ export default function AdminRiskPage() {
           </h1>
           <p className="text-gray-400 text-sm mt-1">Control game RTP (Return to Player) and monitor high-risk accounts.</p>
         </div>
-        <button className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold flex items-center transition-colors">
-          <Save className="w-4 h-4 mr-2" /> Save Global Settings
+        <button 
+          onClick={handleSave}
+          disabled={saving}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold flex items-center transition-colors disabled:opacity-50"
+        >
+          <Save className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save Global Settings"}
         </button>
       </div>
+
+      {message && (
+        <div className={`p-4 rounded-lg flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+          {message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+          <span className="font-bold">{message.text}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
