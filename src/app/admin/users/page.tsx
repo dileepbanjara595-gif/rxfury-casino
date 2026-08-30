@@ -77,7 +77,7 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 text-right text-gray-400">₹{Number(user.bonusWalletBalance).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
                   <td className="px-6 py-4 text-center">
                     <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 px-2 py-1 rounded text-xs font-black">
-                      L{user.vipLevel || 0}
+                      L{user.vipLevel?.id || 0}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-center">
