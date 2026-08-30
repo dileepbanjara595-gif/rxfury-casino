@@ -50,7 +50,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // 3. Strict Auth Wall: If user is not authenticated, redirect to /login
-  if (!token) {
+  if (!token && pathname !== '/') {
     const loginUrl = new URL('/login', req.url);
     if (pathname !== '/') {
       loginUrl.searchParams.set('callbackUrl', pathname);

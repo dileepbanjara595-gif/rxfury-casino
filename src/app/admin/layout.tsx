@@ -34,7 +34,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <ShieldAlert className="w-5 h-5" />
             <span className="font-bold text-sm">Risk Management</span>
           </Link>
-        </nav>
+        
+          <Link href="/admin/funds" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-[#1a1a2e] hover:text-gray-200 transition-colors">
+            <CreditCard className="w-5 h-5" />
+            <span className="font-bold text-sm">Manual Funds</span>
+          </Link>
+
+          <Link href="/admin/games" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-[#1a1a2e] hover:text-gray-200 transition-colors">
+            <ShieldAlert className="w-5 h-5" />
+            <span className="font-bold text-sm">Game History</span>
+          </Link>
+</nav>
 
         <div className="p-4 border-t border-[#1f1f2e]">
           <Link href="/" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-500 hover:bg-red-900/20 hover:text-red-400 transition-colors">
