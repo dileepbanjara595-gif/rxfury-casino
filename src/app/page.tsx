@@ -4,19 +4,33 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useUserStore } from "@/store/userStore";
-import { Gamepad2, Gift, Crown, Users, QrCode, Bitcoin, Building2, X, Lock } from "lucide-react";
-
+import { Gamepad2, Gift, Crown, Users, Lock, Sparkles } from "lucide-react";
 import { useAuthModalStore } from "@/store/authModalStore";
 import { useRouter } from "next/navigation";
 import { useDepositModalStore } from "@/store/depositModalStore";
+import LiveFeed from "@/components/LiveFeed";
+import { useCurrencyStore, CURRENCY_SYMBOLS, convertFromBase, formatCurrency } from "@/store/currencyStore";
+
+const VIP_TIERS = [
+  { name: 'Bronze', color: 'text-amber-500', rakeback: '5%', baseBonus: 1000, host: false },
+  { name: 'Silver', color: 'text-slate-300', rakeback: '7%', baseBonus: 5000, host: false },
+  { name: 'Gold', color: 'text-yellow-400', rakeback: '9%', baseBonus: 15000, host: false },
+  { name: 'Platinum', color: 'text-blue-400', rakeback: '11%', baseBonus: 35000, host: false },
+  { name: 'Emerald', color: 'text-emerald-400', rakeback: '13%', baseBonus: 75000, host: false },
+  { name: 'Ruby', color: 'text-rose-500', rakeback: '15%', baseBonus: 150000, host: false },
+  { name: 'Diamond', color: 'text-cyan-300', rakeback: '18%', baseBonus: 350000, host: true },
+  { name: 'Crown', color: 'text-amber-300', rakeback: '20%', baseBonus: 1000000, host: true }
+];
 
 export default function Home() {
   const { session, isLoading } = useUserStore();
   const { openModal } = useAuthModalStore();
   const { openModal: openDepositModal } = useDepositModalStore();
+  const { activeCurrency } = useCurrencyStore();
   const router = useRouter();
+  const sym = CURRENCY_SYMBOLS[activeCurrency] || '₹';
 
-    useEffect(() => {
+  useEffect(() => {
     // Initial Visit Auth Trigger for non-authenticated users
     if (!isLoading && !session?.user && !sessionStorage.getItem("authPromptShown")) {
       const timer = setTimeout(() => {
@@ -28,21 +42,18 @@ export default function Home() {
   }, [session, isLoading, openModal]);
 
   useEffect(() => {
-    // Only show modal if user is logged in, and hasn't seen it yet in this session
+    // Only show deposit modal if user is logged in, and hasn't seen it yet in this session
     if (session?.user && !sessionStorage.getItem("welcomeModalShown")) {
       const timer = setTimeout(() => {
         openDepositModal('deposit', 'methods');
         sessionStorage.setItem("welcomeModalShown", "true");
-      }, 1500); // 1.5 second delay for dramatic effect
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [session]);
+
   return (
     <div className="flex flex-col w-full relative">
-      
-      {/* Modal removed to Providers.tsx globally */}
-
-
       
       {/* 1. HERO SECTION */}
       <section 
@@ -50,10 +61,8 @@ export default function Home() {
         className="relative w-full h-[550px] md:h-[750px] flex flex-col items-center justify-center overflow-hidden bg-cover bg-center bg-[#11141f]"
         style={{ backgroundImage: "url('/images/welcome_screen.jpg')" }}
       >
-        {/* Dark Gradient Overlay for Text Visibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f16]/80 via-[#0a0f16]/60 to-[#0a0f16] z-0"></div>
 
-        {/* Content Layer */}
         <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-4xl mx-auto">
           <div className="relative w-40 h-40 md:w-56 md:h-56 mb-6 drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
             <Image 
@@ -93,43 +102,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 1.5 LIVE WINS TICKER */}
-      <div className="bg-[#1a1d29] border-y border-white/5 py-3 relative overflow-hidden flex items-center shadow-lg">
-        <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-[#1a1d29] to-transparent z-10 pointer-events-none flex items-center px-4">
-          <div className="flex items-center gap-2 bg-black/60 px-3 py-1.5 rounded-full border border-green-500/30 backdrop-blur-md">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]"></div>
-            <span className="text-gray-300 text-xs font-black uppercase tracking-widest">Live</span>
-          </div>
-        </div>
-        
-        {/* Scrolling Content */}
-        <div className="flex space-x-8 animate-[scroll_30s_linear_infinite] whitespace-nowrap px-4 pl-[300px]">
-          {[...Array(2)].map((_, groupIdx) => (
-            <div key={groupIdx} className="flex space-x-8 shrink-0">
-              {[
-                { user: 'User9646', game: 'Chicken Road', amount: '₹24,500' },
-                { user: 'Rahul88', game: 'Aviator', amount: '₹12,400' },
-                { user: 'CryptoKing', game: 'Mines', amount: '₹8,900' },
-                { user: 'LuckyStar', game: 'Teen Patti', amount: '₹45,000' },
-                { user: 'VipPlayer1', game: 'Blackjack', amount: '₹1,12,000' },
-                { user: 'Alex99', game: 'Aviator', amount: '₹4,500' },
-                { user: 'User4421', game: 'Chicken Road', amount: '₹18,000' },
-                { user: 'WinnerXYZ', game: 'Roulette', amount: '₹33,200' },
-              ].map((win, idx) => (
-                <div key={`${groupIdx}-${idx}`} className="flex items-center space-x-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                  <span className="text-gray-400 font-bold text-sm">{win.user}</span>
-                  <span className="text-gray-600 text-xs">played</span>
-                  <span className="text-blue-400 font-bold text-sm">{win.game}</span>
-                  <span className="text-gray-600 text-xs">won</span>
-                  <span className="text-green-400 font-black text-sm drop-shadow-[0_0_5px_rgba(34,197,94,0.4)]">+{win.amount}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-        
-        <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-[#1a1d29] to-transparent z-10 pointer-events-none"></div>
-      </div>
+      {/* 1.5 DYNAMIC LIVE WINS TICKER */}
+      <LiveFeed />
 
       {/* 2. GAMES SECTION */}
       <section 
@@ -147,10 +121,10 @@ export default function Home() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { id: "aviator", name: "Aviator", category: "Fast", color: "from-red-500 to-red-700", icon: "/images/games/aviator.png" },
-              { id: "teen-patti", name: "Teen Patti", category: "Card", color: "from-green-500 to-green-700", icon: "/images/games/teen-patti.jpg" },
-              { id: "blackjack", name: "Blackjack", category: "Card", color: "from-purple-500 to-purple-700", icon: "/images/games/blackjack.jpg" },
-              { id: "solitaire", name: "Solitaire", category: "Card", color: "from-emerald-500 to-emerald-700", icon: "/images/games/solitaire.jpg" }
+              { id: "aviator", name: "Aviator", category: "Fast", tag: "Live", isLive: true, color: "from-red-500 to-red-700", icon: "/images/games/aviator.png" },
+              { id: "teen-patti", name: "Teen Patti", category: "Card", tag: "Live", isLive: true, color: "from-green-500 to-green-700", icon: "/images/games/teen-patti.jpg" },
+              { id: "blackjack", name: "Blackjack", category: "Card", tag: "Live", isLive: true, color: "from-purple-500 to-purple-700", icon: "/images/games/blackjack.jpg" },
+              { id: "solitaire", name: "Solitaire", category: "Skill", tag: "Skill", isLive: false, color: "from-emerald-500 to-emerald-700", icon: "/images/games/solitaire.jpg" }
             ].map((game) => (
               <Link 
                 href={`/games/play/${game.id}`}
@@ -171,9 +145,7 @@ export default function Home() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out opacity-90 group-hover:opacity-100"
                     onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                   />
-                  {/* Sleek Gradient Overlay for Text Readability over the image */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f16] via-[#0a0f16]/80 to-transparent"></div>
-                  {/* Subtle color tint based on game category */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${game.color} opacity-40 mix-blend-overlay`}></div>
                 </div>
 
@@ -196,8 +168,17 @@ export default function Home() {
                       {game.name}
                     </h3>
                     <div className="flex items-center space-x-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-700 shadow-md">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                      <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Live</span>
+                      {game.isLive ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                          <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Live</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-2.5 h-2.5 text-blue-400" />
+                          <span className="text-[9px] font-bold text-blue-300 uppercase tracking-widest">{game.tag}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -241,8 +222,8 @@ export default function Home() {
               
               <div className="relative z-10">
                 <h3 className="text-3xl font-black text-white mb-3 drop-shadow-md">100% Welcome Bonus</h3>
-                <p className="text-purple-100 text-lg mb-8 max-w-md drop-shadow-md font-medium">Double your first deposit instantly up to ₹150,000. Start your winning journey with a massive advantage.</p>
-                <button onClick={() => session?.user ? openDepositModal('deposit', 'methods') : openModal('register')} className="inline-block px-8 py-4 bg-white text-purple-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg">Claim Now</button>
+                <p className="text-purple-100 text-lg mb-8 max-w-md drop-shadow-md font-medium">Double your first deposit instantly up to {sym} {formatCurrency(convertFromBase(150000, activeCurrency), activeCurrency)}. Start your winning journey with a massive advantage.</p>
+                <button onClick={() => session?.user ? openDepositModal('deposit', 'methods') : openModal('register')} className="inline-block px-8 py-4 bg-white text-purple-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg cursor-pointer">Claim Now</button>
               </div>
             </div>
 
@@ -263,7 +244,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4. VIP SECTION */}
+      {/* 4. VIP SECTION (STANDARDIZED PROGRESSION) */}
       <section 
         id="vip" 
         className="min-h-screen py-24 px-4 md:px-8 bg-gray-950 flex flex-col items-center justify-center border-t border-gray-900 relative"
@@ -274,52 +255,41 @@ export default function Home() {
               <Crown className="w-12 h-12 text-yellow-500" />
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight uppercase">Elite VIP Club</h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">Ascend through 8 exclusive tiers. Unlock higher withdrawal limits, priority support, and daily rewards.</p>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">Ascend from Bronze to Crown. Unlock higher withdrawal limits, priority support, and progressive rewards.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { name: 'Silver', color: 'text-gray-300', rakeback: '5%', bonus: '₹5,000', host: false },
-              { name: 'Sapphire', color: 'text-blue-400', rakeback: '6%', bonus: '₹10,000', host: false },
-              { name: 'Emerald', color: 'text-emerald-400', rakeback: '7%', bonus: '₹25,000', host: false },
-              { name: 'Bronze', color: 'text-orange-400', rakeback: '8%', bonus: '₹50,000', host: false },
-              { name: 'Amethyst', color: 'text-purple-400', rakeback: '10%', bonus: '₹1,00,000', host: false },
-              { name: 'Ruby', color: 'text-red-500', rakeback: '12%', bonus: '₹2,50,000', host: false },
-              { name: 'Gold', color: 'text-yellow-400', rakeback: '14%', bonus: '₹5,00,000', host: true },
-              { name: 'Diamond', color: 'text-cyan-300', rakeback: '15%', bonus: '₹10,00,000', host: true }
-            ].map((tier, idx) => {
-              const currentVipLevel = 3; // Mocking user as Emerald
+            {VIP_TIERS.map((tier, idx) => {
+              const currentVipLevel = (session?.user as any)?.vipLevelId || 1;
               const isCurrent = idx + 1 === currentVipLevel;
               const isLocked = idx + 1 > currentVipLevel;
+              const formattedBonus = `${sym} ${formatCurrency(convertFromBase(tier.baseBonus, activeCurrency), activeCurrency)}`;
 
               return (
               <div key={tier.name} className={`group relative rounded-3xl p-6 text-left border flex flex-col justify-between overflow-hidden transition-all duration-300 h-[340px]
-                ${isCurrent ? 'border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]' : 'border-gray-800 hover:border-gray-600 hover:-translate-y-2 hover:shadow-2xl'}
+                ${isCurrent ? 'border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]' : 'border-gray-800 hover:border-gray-600 hover:-translate-y-2 hover:shadow-2xl'}
               `}>
-                {/* Background Placeholder */}
                 <div className="absolute inset-0 z-0 bg-[#0a0f16]">
                   <div className={`absolute inset-0 w-full h-full opacity-5 group-hover:opacity-15 transition-all duration-500 bg-gradient-to-br ${tier.color.replace('text-', 'from-')} to-transparent`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f16] via-[#0a0f16]/90 to-transparent"></div>
                   <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f16]/60 to-transparent"></div>
                 </div>
 
-                {/* Top Headers & Badges */}
                 <div className="relative z-10 flex justify-between items-start mb-4">
                   <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold text-white border border-white/20 shadow-lg">
                     Level {idx + 1}
                   </div>
                   {isLocked && <div className="bg-black/50 p-2 rounded-full border border-gray-700 backdrop-blur-sm"><Lock className="w-4 h-4 text-gray-400" /></div>}
-                  {isCurrent && <div className="text-green-400 text-xs font-black uppercase tracking-widest animate-pulse bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/30">Current</div>}
+                  {isCurrent && <div className="text-yellow-400 text-xs font-black uppercase tracking-widest animate-pulse bg-yellow-500/10 px-3 py-1.5 rounded-full border border-yellow-500/30">Current</div>}
                 </div>
 
-                {/* Bottom Content & Perks */}
                 <div className="relative z-10 flex flex-col flex-1 justify-end">
                   <h4 className={`font-black text-3xl mb-4 tracking-widest uppercase drop-shadow-[0_2px_10px_rgba(0,0,0,1)] ${tier.color}`}>{tier.name}</h4>
                   
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
                       <span className="text-gray-400 font-medium">Level Up Bonus</span>
-                      <span className="text-white font-black">{tier.bonus}</span>
+                      <span className="text-white font-black">{formattedBonus}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/5 pb-2">
                       <span className="text-gray-400 font-medium">Instant Rakeback</span>
@@ -384,7 +354,7 @@ export default function Home() {
           </div>
 
           <div className="text-center">
-            <button onClick={() => session?.user ? router.push('/affiliate') : openModal('register')} className="inline-flex items-center px-10 py-5 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-500 transition-all shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] uppercase tracking-widest text-lg group">Start Earning Now <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span></button>
+            <button onClick={() => session?.user ? router.push('/affiliate') : openModal('register')} className="inline-flex items-center px-10 py-5 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-500 transition-all shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:shadow-[0_0_40px_rgba(16,185,129,0.6)] uppercase tracking-widest text-lg group cursor-pointer">Start Earning Now <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span></button>
           </div>
         </div>
       </section>
@@ -392,6 +362,3 @@ export default function Home() {
     </div>
   );
 }
- 
-
-

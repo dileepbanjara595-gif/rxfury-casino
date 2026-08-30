@@ -1,32 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Info, Play, Filter, Sparkles, Spade } from "lucide-react";
+import { Search, Info, Play, Filter, Sparkles, Spade, Trophy } from "lucide-react";
 import Link from "next/link";
 
-type Category = "All" | "Fast" | "Card";
+type Category = "All" | "Fast" | "Card" | "Skill";
 
 interface Game {
   id: string;
   name: string;
-  category: "Fast" | "Card";
+  category: "Fast" | "Card" | "Skill";
   gradient: string;
   icon: string;
+  isLive?: boolean;
 }
 
 const gamesList: Game[] = [
-  { id: "aviator", name: "Aviator", category: "Fast", gradient: "from-red-500 to-orange-600", icon: "/images/games/aviator.png" },
-  { id: "mines", name: "Mines", category: "Fast", gradient: "from-emerald-500 to-teal-700", icon: "/images/games/mines.jpg" },
-  { id: "chicken-road", name: "Chicken Road", category: "Fast", gradient: "from-yellow-400 to-orange-500", icon: "/images/games/chicken-road.jpg" },
-  { id: "big-small", name: "Big & Small", category: "Fast", gradient: "from-blue-500 to-indigo-600", icon: "/images/games/big-small.jpg" },
-  { id: "k3", name: "K3", category: "Fast", gradient: "from-purple-500 to-pink-600", icon: "/images/games/k3.jpg" },
-  { id: "moto-racing", name: "Moto Racing", category: "Fast", gradient: "from-gray-600 to-gray-900", icon: "/images/games/moto-racing.jpg" },
-  { id: "rummy", name: "Rummy", category: "Card", gradient: "from-red-700 to-red-900", icon: "/images/games/rummy.jpg" },
-  { id: "teen-patti", name: "Teen Patti", category: "Card", gradient: "from-orange-600 to-red-700", icon: "/images/games/teen-patti.jpg" },
-  { id: "poker", name: "Poker", category: "Card", gradient: "from-blue-700 to-blue-900", icon: "/images/games/poker.jpg" },
-  { id: "blackjack", name: "Blackjack", category: "Card", gradient: "from-gray-800 to-black", icon: "/images/games/blackjack.jpg" },
-  { id: "solitaire", name: "Solitaire", category: "Card", gradient: "from-green-600 to-green-800", icon: "/images/games/solitaire.jpg" },
-  { id: "bridge", name: "Bridge", category: "Card", gradient: "from-indigo-600 to-purple-800", icon: "/images/games/bridge.jpg" },
+  { id: "aviator", name: "Aviator", category: "Fast", isLive: true, gradient: "from-red-500 to-orange-600", icon: "/images/games/aviator.png" },
+  { id: "mines", name: "Mines", category: "Fast", isLive: true, gradient: "from-emerald-500 to-teal-700", icon: "/images/games/mines.jpg" },
+  { id: "chicken-road", name: "Chicken Road", category: "Fast", isLive: true, gradient: "from-yellow-400 to-orange-500", icon: "/images/games/chicken-road.jpg" },
+  { id: "big-small", name: "Big & Small", category: "Fast", isLive: true, gradient: "from-blue-500 to-indigo-600", icon: "/images/games/big-small.jpg" },
+  { id: "k3", name: "K3", category: "Fast", isLive: true, gradient: "from-purple-500 to-pink-600", icon: "/images/games/k3.jpg" },
+  { id: "moto-racing", name: "Moto Racing", category: "Fast", isLive: true, gradient: "from-gray-600 to-gray-900", icon: "/images/games/moto-racing.jpg" },
+  { id: "rummy", name: "Rummy", category: "Card", isLive: true, gradient: "from-red-700 to-red-900", icon: "/images/games/rummy.jpg" },
+  { id: "teen-patti", name: "Teen Patti", category: "Card", isLive: true, gradient: "from-orange-600 to-red-700", icon: "/images/games/teen-patti.jpg" },
+  { id: "poker", name: "Poker", category: "Card", isLive: true, gradient: "from-blue-700 to-blue-900", icon: "/images/games/poker.jpg" },
+  { id: "blackjack", name: "Blackjack", category: "Card", isLive: true, gradient: "from-gray-800 to-black", icon: "/images/games/blackjack.jpg" },
+  { id: "solitaire", name: "Solitaire", category: "Skill", isLive: false, gradient: "from-green-600 to-green-800", icon: "/images/games/solitaire.jpg" },
+  { id: "bridge", name: "Bridge", category: "Card", isLive: true, gradient: "from-indigo-600 to-purple-800", icon: "/images/games/bridge.jpg" },
 ];
 
 export default function GamesLobbyPage() {
@@ -45,19 +46,17 @@ export default function GamesLobbyPage() {
       
       {/* Header & Hero Section */}
       <div className="bg-gray-900 border-b border-gray-800 pt-28 pb-8 px-4 md:px-8 shadow-2xl relative overflow-hidden">
-        {/* Decorative Background Elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto relative z-10">
-          {/* Search & Filters */}
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             
             {/* Tabs */}
             <div className="flex bg-gray-950 p-1 rounded-xl w-full md:w-auto border border-gray-800 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setActiveTab("All")}
-                className={`flex-1 md:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                className={`flex-1 md:flex-none whitespace-nowrap px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
                   activeTab === "All" ? "bg-gray-800 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-gray-900"
                 }`}
               >
@@ -65,21 +64,30 @@ export default function GamesLobbyPage() {
               </button>
               <button
                 onClick={() => setActiveTab("Fast")}
-                className={`flex-1 md:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center ${
+                className={`flex-1 md:flex-none whitespace-nowrap px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center ${
                   activeTab === "Fast" ? "bg-gray-800 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-gray-900"
                 }`}
               >
-                <Sparkles className="w-4 h-4 mr-2" />
+                <Sparkles className="w-4 h-4 mr-1.5 text-yellow-400" />
                 Fast / Crash
               </button>
               <button
                 onClick={() => setActiveTab("Card")}
-                className={`flex-1 md:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center ${
+                className={`flex-1 md:flex-none whitespace-nowrap px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center ${
                   activeTab === "Card" ? "bg-gray-800 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-gray-900"
                 }`}
               >
-                <Spade className="w-4 h-4 mr-2" />
+                <Spade className="w-4 h-4 mr-1.5 text-blue-400" />
                 Classic Cards
+              </button>
+              <button
+                onClick={() => setActiveTab("Skill")}
+                className={`flex-1 md:flex-none whitespace-nowrap px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center ${
+                  activeTab === "Skill" ? "bg-gray-800 text-white shadow-sm" : "text-gray-400 hover:text-white hover:bg-gray-900"
+                }`}
+              >
+                <Trophy className="w-4 h-4 mr-1.5 text-emerald-400" />
+                Skill & Casual
               </button>
             </div>
 
@@ -93,7 +101,7 @@ export default function GamesLobbyPage() {
                 placeholder="Search games..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-inner"
+                className="block w-full pl-10 pr-4 py-3 bg-gray-950 border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-inner text-sm"
               />
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <Filter className="h-4 w-4 text-gray-600" />
@@ -126,9 +134,7 @@ export default function GamesLobbyPage() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-in-out opacity-90 group-hover:opacity-100"
                     onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                   />
-                  {/* Sleek Gradient Overlay for Text Readability over the image */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0f16] via-[#0a0f16]/80 to-transparent"></div>
-                  {/* Subtle color tint based on game category */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${game.gradient} opacity-40 mix-blend-overlay`}></div>
                 </div>
 
@@ -163,8 +169,17 @@ export default function GamesLobbyPage() {
                       {game.name}
                     </h3>
                     <div className="flex items-center space-x-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-lg border border-gray-700 shadow-md">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                      <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Live</span>
+                      {game.isLive ? (
+                        <>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
+                          <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Live</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trophy className="w-2.5 h-2.5 text-emerald-400" />
+                          <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-widest">Skill</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -174,13 +189,13 @@ export default function GamesLobbyPage() {
         )}
       </div>
 
-      {/* 'How to Play' Dummy Modal */}
+      {/* 'How to Play' Modal */}
       {activeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-lg"
             >
               ✕
             </button>
@@ -189,16 +204,16 @@ export default function GamesLobbyPage() {
               <h2 className="text-xl font-bold text-white">How to Play {activeModal}</h2>
             </div>
             <div className="space-y-4 text-gray-300 text-sm">
-              <p>1. Place your bet before the round starts.</p>
-              <p>2. Watch the multiplier increase.</p>
-              <p>3. Cash out before the round ends to win your bet multiplied by that amount!</p>
+              <p>1. Select your stake and place your wager before the session starts.</p>
+              <p>2. Complete objectives or cash out dynamically as multipliers scale.</p>
+              <p>3. Winnings are settled directly to your wallet in real time.</p>
               <p className="text-xs text-gray-500 pt-4 border-t border-gray-800">
-                This is a provably fair game. Results are generated via a secure server seed.
+                This is a provably fair game backed by cryptographic random seeds.
               </p>
             </div>
             <button 
               onClick={() => setActiveModal(null)}
-              className="w-full mt-6 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
+              className="w-full mt-6 bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 rounded-lg transition-colors cursor-pointer"
             >
               Got it
             </button>

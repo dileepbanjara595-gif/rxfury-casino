@@ -1,26 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Crown, Star, Shield, Zap, Info, CheckCircle2, Wallet, ArrowRight } from "lucide-react";
+import { Crown, Star, Shield, Zap, Info, CheckCircle2, Wallet, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 import { useUserStore } from "@/store/userStore";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useCurrencyStore, CURRENCY_SYMBOLS, convertFromBase, formatCurrency } from "@/store/currencyStore";
 
 const vipTiers = [
-  { level: "L1", price: 0, name: "Silver", color: "from-slate-400 to-slate-600", text: "text-slate-100", shadow: "shadow-slate-500/20" },
-  { level: "L2", price: 1500, name: "Sapphire", color: "from-blue-500 to-blue-700", text: "text-blue-100", shadow: "shadow-blue-500/20" },
-  { level: "L3", price: 2700, name: "Emerald", color: "from-emerald-400 to-emerald-700", text: "text-emerald-100", shadow: "shadow-emerald-500/20" },
-  { level: "L4", price: 4000, name: "Bronze", color: "from-orange-400 to-orange-700", text: "text-orange-100", shadow: "shadow-orange-500/20" },
-  { level: "L5", price: 8500, name: "Amethyst", color: "from-purple-400 to-purple-700", text: "text-purple-100", shadow: "shadow-purple-500/20" },
-  { level: "L6", price: 11000, name: "Ruby", color: "from-rose-500 to-rose-700", text: "text-rose-100", shadow: "shadow-rose-500/20" },
-  { level: "L7", price: 15000, name: "Gold", color: "from-yellow-400 to-yellow-600", text: "text-yellow-100", shadow: "shadow-yellow-500/40" },
-  { level: "L8", price: 20000, name: "Diamond", color: "from-cyan-300 via-white to-cyan-500", text: "text-cyan-900", shadow: "shadow-cyan-500/50" },
+  { level: "L1", basePrice: 0, name: "Bronze", color: "from-amber-600 to-amber-800", text: "text-amber-100", shadow: "shadow-amber-500/20", rakeback: "5%" },
+  { level: "L2", basePrice: 1500, name: "Silver", color: "from-slate-400 to-slate-600", text: "text-slate-100", shadow: "shadow-slate-500/20", rakeback: "7%" },
+  { level: "L3", basePrice: 4000, name: "Gold", color: "from-yellow-400 to-yellow-600", text: "text-yellow-100", shadow: "shadow-yellow-500/40", rakeback: "9%" },
+  { level: "L4", basePrice: 8500, name: "Platinum", color: "from-blue-500 to-blue-700", text: "text-blue-100", shadow: "shadow-blue-500/20", rakeback: "11%" },
+  { level: "L5", basePrice: 15000, name: "Emerald", color: "from-emerald-400 to-emerald-700", text: "text-emerald-100", shadow: "shadow-emerald-500/20", rakeback: "13%" },
+  { level: "L6", basePrice: 25000, name: "Ruby", color: "from-rose-500 to-rose-700", text: "text-rose-100", shadow: "shadow-rose-500/20", rakeback: "15%" },
+  { level: "L7", basePrice: 50000, name: "Diamond", color: "from-cyan-300 via-white to-cyan-500", text: "text-cyan-900", shadow: "shadow-cyan-500/50", rakeback: "18%" },
+  { level: "L8", basePrice: 100000, name: "Crown", color: "from-amber-300 via-yellow-400 to-yellow-600", text: "text-amber-900", shadow: "shadow-amber-500/60", rakeback: "20%" },
 ];
 
 export default function VIPClubPage() {
   const router = useRouter();
   const { session } = useUserStore();
+  const { activeCurrency, baseBalance } = useCurrencyStore();
+  const sym = CURRENCY_SYMBOLS[activeCurrency] || '₹';
   
   const [currentVipLevel, setCurrentVipLevel] = useState(1);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -33,12 +36,12 @@ export default function VIPClubPage() {
   useEffect(() => {
     if (session?.user) {
       setCurrentVipLevel((session.user as any)?.vipLevelId || 1);
-      setWalletBalance((session.user as any)?.mainWalletBalance || 0);
     }
-  }, [session]);
+    setWalletBalance(baseBalance || 0);
+  }, [session, baseBalance]);
 
   const handleUpgrade = async (tier: any) => {
-    if (walletBalance < tier.price) {
+    if (walletBalance < tier.basePrice) {
       setTargetUpgrade(tier);
       setShowDepositModal(true);
       return;
@@ -49,17 +52,14 @@ export default function VIPClubPage() {
       const res = await fetch("/api/vip/upgrade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ level: tier.level, price: tier.price })
+        body: JSON.stringify({ level: tier.level, price: tier.basePrice })
       });
       const data = await res.json();
 
       if (res.ok) {
-        // Success
         setWalletBalance(data.newBalance);
         setCurrentVipLevel(data.newLevel);
         setShowSuccessModal(true);
-        // Soft refresh session
-        /* updateSession() */; 
       } else {
         if (data.code === "INSUFFICIENT_FUNDS") {
           setTargetUpgrade(tier);
@@ -75,18 +75,16 @@ export default function VIPClubPage() {
     }
   };
 
-  // Dummy data for progress
   const currentTurnover = walletBalance * 2.5; 
-  const targetTurnover = currentVipLevel < 8 ? vipTiers[currentVipLevel].price * 10 : currentTurnover;
-  const progressPercent = Math.min((currentTurnover / targetTurnover) * 100, 100);
-
-  const currentTierObj = vipTiers[currentVipLevel - 1];
+  const targetTurnover = currentVipLevel < 8 ? vipTiers[currentVipLevel].basePrice * 10 : currentTurnover;
+  const progressPercent = Math.min((currentTurnover / (targetTurnover || 1)) * 100, 100);
+  const currentTierObj = vipTiers[Math.max(0, currentVipLevel - 1)] || vipTiers[0];
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans pb-16 selection:bg-yellow-500/30">
       
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gray-900 border-b border-gray-800 pt-16 pb-20 px-4 shadow-2xl">
+      <div className="relative overflow-hidden bg-gray-900 border-b border-gray-800 pt-28 pb-20 px-4 shadow-2xl">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-yellow-500/10 rounded-full blur-[120px] pointer-events-none"></div>
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -95,7 +93,7 @@ export default function VIPClubPage() {
             RXFURY <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600">Elite VIP Club</span>
           </h1>
           <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">
-            Ascend through the ranks to unlock exclusive bonuses, daily cashback, and higher withdrawal limits. Upgrade via gameplay or direct purchase.
+            Ascend through standard competitive tiers from Bronze to Crown. Unlock higher withdrawal limits, instant rakeback up to 20%, and dedicated VIP hosting.
           </p>
         </div>
       </div>
@@ -107,18 +105,22 @@ export default function VIPClubPage() {
             <div className="text-center md:text-left">
               <p className="text-gray-400 text-sm uppercase tracking-widest font-semibold mb-1">Your Status</p>
               <div className="flex items-center justify-center md:justify-start space-x-3">
-                <h2 className="text-3xl font-black text-white">VIP L{currentVipLevel}</h2>
-                <span className={`bg-gray-800 ${currentTierObj.text} text-xs font-bold px-2 py-1 rounded border border-gray-700`}>
+                <h2 className="text-3xl font-black text-white">VIP Level {currentVipLevel}</h2>
+                <span className={`bg-gray-800 ${currentTierObj.text} text-xs font-bold px-2.5 py-1 rounded border border-gray-700 uppercase tracking-wider`}>
                   {currentTierObj.name} Member
                 </span>
               </div>
-              <p className="text-xs text-gray-400 font-mono mt-2">Wallet: ₹{walletBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}</p>
+              <p className="text-xs text-gray-400 font-mono mt-2">
+                Wallet: {sym} {formatCurrency(convertFromBase(walletBalance, activeCurrency), activeCurrency)}
+              </p>
             </div>
 
             <div className="w-full md:w-1/2">
               <div className="flex justify-between text-sm text-gray-400 mb-2 font-medium">
-                <span>Turnover: ₹{currentTurnover.toLocaleString()}</span>
-                {currentVipLevel < 8 && <span>Next: L{currentVipLevel + 1} (₹{targetTurnover.toLocaleString()})</span>}
+                <span>Turnover: {sym} {formatCurrency(convertFromBase(currentTurnover, activeCurrency), activeCurrency)}</span>
+                {currentVipLevel < 8 && (
+                  <span>Next: L{currentVipLevel + 1} ({sym} {formatCurrency(convertFromBase(targetTurnover, activeCurrency), activeCurrency)})</span>
+                )}
               </div>
               <div className="h-3 w-full bg-gray-950 rounded-full overflow-hidden border border-gray-800">
                 <div 
@@ -141,10 +143,10 @@ export default function VIPClubPage() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 mt-16">
         
         {/* Disclaimer */}
-        <div className="flex items-center justify-center mb-8 p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm max-w-2xl mx-auto text-center">
-          <Info className="w-5 h-5 mr-3 flex-shrink-0" />
+        <div className="flex items-center justify-center mb-8 p-3.5 bg-blue-900/20 border border-blue-500/30 rounded-xl text-blue-300 text-sm max-w-2xl mx-auto text-center">
+          <Info className="w-5 h-5 mr-3 flex-shrink-0 text-blue-400" />
           <p>
-            Prices are in <strong>INR</strong>. For international players, amounts will auto-convert to your local currency upon checkout.
+            Prices are shown in <strong>{activeCurrency} ({sym})</strong>. Amounts automatically update with your active platform currency toggle.
           </p>
         </div>
 
@@ -154,6 +156,8 @@ export default function VIPClubPage() {
             const levelNum = parseInt(tier.level.replace("L", ""));
             const isCurrent = levelNum === currentVipLevel;
             const isPassed = levelNum < currentVipLevel;
+            const convertedPrice = convertFromBase(tier.basePrice, activeCurrency);
+            const formattedPrice = tier.basePrice === 0 ? "Free" : `${sym} ${formatCurrency(convertedPrice, activeCurrency)}`;
 
             return (
               <div 
@@ -165,15 +169,15 @@ export default function VIPClubPage() {
                   <div className="absolute inset-0 bg-black/20"></div>
                   <div className="relative z-10 flex justify-between items-start">
                     <div>
-                      <p className={`text-sm font-bold tracking-widest uppercase ${tier.text} opacity-80`}>{tier.name}</p>
-                      <h3 className={`text-4xl font-black ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} mt-1`}>{tier.level}</h3>
+                      <p className={`text-sm font-black tracking-widest uppercase ${tier.text} opacity-90`}>{tier.name}</p>
+                      <h3 className={`text-4xl font-black ${tier.level === 'L7' || tier.level === 'L8' ? 'text-gray-950' : 'text-white'} mt-1`}>{tier.level}</h3>
                     </div>
                     {index > 5 ? (
-                      <Crown className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                      <Crown className={`w-8 h-8 ${tier.level === 'L7' || tier.level === 'L8' ? 'text-gray-950' : 'text-white'} opacity-90`} />
                     ) : index > 3 ? (
-                      <Star className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                      <Star className={`w-8 h-8 ${tier.level === 'L7' || tier.level === 'L8' ? 'text-gray-950' : 'text-white'} opacity-90`} />
                     ) : (
-                      <Shield className={`w-8 h-8 ${tier.level === 'L8' ? 'text-gray-900' : 'text-white'} opacity-90`} />
+                      <Shield className={`w-8 h-8 ${tier.level === 'L7' || tier.level === 'L8' ? 'text-gray-950' : 'text-white'} opacity-90`} />
                     )}
                   </div>
                 </div>
@@ -181,25 +185,29 @@ export default function VIPClubPage() {
                 {/* Card Body */}
                 <div className="p-6 flex-grow flex flex-col justify-between">
                   <div className="mb-6 text-center">
-                    <p className="text-gray-400 text-sm font-medium mb-1">Direct Upgrade Price</p>
-                    <p className="text-3xl font-bold text-white tracking-tight">
-                      {tier.price === 0 ? "Free" : `₹ ${tier.price.toLocaleString()}`}
+                    <p className="text-gray-400 text-xs uppercase tracking-wider font-bold mb-1">Direct Upgrade Price</p>
+                    <p className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                      {formattedPrice}
                     </p>
                   </div>
                   
-                  <ul className="space-y-3 mb-8 text-sm text-gray-400">
+                  <ul className="space-y-3 mb-8 text-xs md:text-sm text-gray-400">
+                    <li className="flex items-center">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 shrink-0" />
+                      Instant Rakeback: <strong className="text-white ml-1">{tier.rakeback}</strong>
+                    </li>
                     <li className="flex items-center">
                       <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 shrink-0" />
                       Increased Withdrawal Limits
                     </li>
                     <li className="flex items-center">
                       <CheckCircle2 className="w-4 h-4 text-green-500 mr-2 shrink-0" />
-                      Priority Support
+                      Priority 24/7 VIP Support
                     </li>
-                    {index > 2 && (
-                      <li className="flex items-center text-gray-300">
-                        <CheckCircle2 className="w-4 h-4 text-yellow-500 mr-2 shrink-0" />
-                        Weekly Cashback %
+                    {index > 5 && (
+                      <li className="flex items-center text-yellow-300 font-bold">
+                        <Crown className="w-4 h-4 text-yellow-400 mr-2 shrink-0" />
+                        Dedicated VIP Host
                       </li>
                     )}
                   </ul>
@@ -207,21 +215,21 @@ export default function VIPClubPage() {
                   <button 
                     onClick={() => handleUpgrade(tier)}
                     disabled={isCurrent || isPassed || isProcessing === tier.level}
-                    className={`w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center
+                    className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center cursor-pointer
                       ${isCurrent || isPassed 
                         ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-gray-700' 
-                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.2)] hover:shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_20px_rgba(37,99,235,0.5)]'
                       }
                     `}
                   >
                     {isProcessing === tier.level ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : isCurrent ? (
-                      'Current Level'
+                      'Current Tier'
                     ) : isPassed ? (
                       'Unlocked'
                     ) : (
-                      'Purchase Upgrade'
+                      'Unlock Tier'
                     )}
                   </button>
                 </div>
@@ -231,7 +239,7 @@ export default function VIPClubPage() {
         </div>
       </div>
 
-      {/* --- SUCCESS MODAL (Framer Motion) --- */}
+      {/* --- SUCCESS MODAL --- */}
       <AnimatePresence>
         {showSuccessModal && (
           <motion.div 
@@ -245,11 +253,11 @@ export default function VIPClubPage() {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-32 bg-yellow-500/20 blur-[50px]"></div>
               <Crown className="w-20 h-20 text-yellow-500 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(234,179,8,0.8)]" />
               <h3 className="text-3xl font-black text-white mb-2">VIP Upgraded!</h3>
-              <p className="text-gray-400 mb-8">You are now a VIP Level {currentVipLevel} member. Enjoy your new exclusive perks.</p>
+              <p className="text-gray-400 mb-8">You are now an Elite Level {currentVipLevel} member. Enjoy your enhanced perks.</p>
               
               <button 
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full py-4 rounded-xl font-bold text-gray-900 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-300 hover:to-yellow-500 uppercase tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+                className="w-full py-4 rounded-xl font-black text-gray-950 bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-300 hover:to-yellow-500 uppercase tracking-widest shadow-[0_0_20px_rgba(234,179,8,0.4)] cursor-pointer"
               >
                 Continue
               </button>
@@ -258,7 +266,7 @@ export default function VIPClubPage() {
         )}
       </AnimatePresence>
 
-      {/* --- INSUFFICIENT BALANCE / DEPOSIT MODAL --- */}
+      {/* --- INSUFFICIENT BALANCE MODAL --- */}
       <AnimatePresence>
         {showDepositModal && targetUpgrade && (
           <motion.div 
@@ -274,20 +282,20 @@ export default function VIPClubPage() {
               </div>
               <h3 className="text-2xl font-black text-white text-center mb-2">Insufficient Balance</h3>
               <p className="text-gray-400 text-center mb-6 text-sm">
-                You need ₹{targetUpgrade.price.toLocaleString()} to upgrade to VIP {targetUpgrade.level}. Your current balance is ₹{walletBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}.
+                You need {sym} {formatCurrency(convertFromBase(targetUpgrade.basePrice, activeCurrency), activeCurrency)} to upgrade to {targetUpgrade.name} ({targetUpgrade.level}).
               </p>
               
               <div className="space-y-3">
                 <Link 
                   href="/wallet/deposit"
-                  className="w-full flex items-center justify-center py-4 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-500 uppercase tracking-widest shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all group"
+                  className="w-full flex items-center justify-center py-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-500 uppercase tracking-widest shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all group"
                 >
                   Deposit Funds Now
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <button 
                   onClick={() => setShowDepositModal(false)}
-                  className="w-full py-4 rounded-xl font-bold text-gray-500 hover:text-white hover:bg-gray-800 uppercase tracking-widest transition-all"
+                  className="w-full py-3.5 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-gray-800 uppercase tracking-widest transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -300,5 +308,3 @@ export default function VIPClubPage() {
     </div>
   );
 }
-
-
