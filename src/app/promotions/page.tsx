@@ -134,7 +134,7 @@ export default function PromotionsPage() {
 
               {/* Action Button */}
               <Link 
-                href="/dashboard"
+                href="/profile"
                 className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl shadow-[0_0_15px_rgba(147,51,234,0.4)] hover:shadow-[0_0_25px_rgba(147,51,234,0.6)] transition-all flex items-center justify-center text-lg"
               >
                 Deposit Now

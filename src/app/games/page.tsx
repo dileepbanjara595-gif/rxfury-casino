@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { Search, Info, Play, Filter, Sparkles, Spade, Trophy } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCurrencyStore } from "@/store/currencyStore";
+import { useUIStore } from "@/store/uiStore";
+import { useUserStore } from "@/store/userStore";
 
 type Category = "All" | "Fast" | "Card" | "Skill";
 
@@ -31,6 +34,11 @@ const gamesList: Game[] = [
 ];
 
 export default function GamesLobbyPage() {
+  const router = useRouter();
+  const { session } = useUserStore();
+  const { baseBalance } = useCurrencyStore();
+  const { openInsufficientFundsModal } = useUIStore();
+
   const [activeTab, setActiveTab] = useState<Category>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -40,6 +48,22 @@ export default function GamesLobbyPage() {
     const matchesSearch = game.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
+
+  const handleGameLaunch = (e: React.MouseEvent, gameId: string) => {
+    if (!session?.user) {
+      e.preventDefault();
+      router.push('/login');
+      return;
+    }
+
+    if (baseBalance <= 0) {
+      e.preventDefault();
+      openInsufficientFundsModal();
+      return;
+    }
+
+    router.push(`/games/play/${gameId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans pb-12">
@@ -121,10 +145,10 @@ export default function GamesLobbyPage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             {filteredGames.map((game) => (
-              <Link 
-                href={`/games/play/${game.id}`}
+              <div 
+                onClick={(e) => handleGameLaunch(e, game.id)}
                 key={game.id} 
-                className="group relative rounded-2xl overflow-hidden border border-gray-700 hover:border-yellow-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(234,179,8,0.25)] flex flex-col h-64 md:h-72 bg-gray-900"
+                className="group relative rounded-2xl overflow-hidden border border-gray-700 hover:border-yellow-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(234,179,8,0.25)] flex flex-col h-64 md:h-72 bg-gray-900 cursor-pointer"
               >
                 {/* Full Cover Game Image */}
                 <div className="absolute inset-0 pointer-events-none z-0">
@@ -148,8 +172,8 @@ export default function GamesLobbyPage() {
                     </div>
                     {/* Info Icon */}
                     <button 
-                      onClick={(e) => { e.preventDefault(); setActiveModal(game.name); }}
-                      className="bg-black/50 hover:bg-black/80 backdrop-blur-md p-1.5 rounded-full text-gray-300 hover:text-white border border-gray-600 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setActiveModal(game.name); }}
+                      className="bg-black/50 hover:bg-black/80 backdrop-blur-md p-1.5 rounded-full text-gray-300 hover:text-white border border-gray-600 transition-colors cursor-pointer"
                       title="How to Play"
                     >
                       <Info className="w-4 h-4" />
@@ -183,7 +207,7 @@ export default function GamesLobbyPage() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
@@ -195,7 +219,7 @@ export default function GamesLobbyPage() {
           <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             <button 
               onClick={() => setActiveModal(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white text-lg"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white text-lg cursor-pointer"
             >
               ✕
             </button>

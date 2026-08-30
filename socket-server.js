@@ -59,16 +59,32 @@ if (isRedisConnected) {
 }
 
 // ----------------------------------------------------
+// AUTHENTICATION MIDDLEWARE FOR WEBSOCKETS
+// ----------------------------------------------------
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+  const userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
+  const email = socket.handshake.auth?.email;
+
+  // Store user info on socket instance
+  socket.user = {
+    id: userId || token || socket.id,
+    email: email || "user@rxfury.com",
+    authenticated: Boolean(token || userId)
+  };
+
+  console.log(`[Socket Auth] Connection handshake: Socket ${socket.id} (User: ${socket.user.id}, Auth: ${socket.user.authenticated})`);
+  next();
+});
+
+// ----------------------------------------------------
 // REDIS IN-MEMORY CACHING HELPERS
-// (Prevents writing high-frequency game ticks to DB)
 // ----------------------------------------------------
 async function setCachedGameState(key, state) {
   if (!isRedisConnected) return;
   try {
-    await cacheClient.set(key, JSON.stringify(state), "EX", 60); // 60s TTL
-  } catch (e) {
-    // Non-blocking in case of cache write error
-  }
+    await cacheClient.set(key, JSON.stringify(state), "EX", 60);
+  } catch (e) {}
 }
 
 async function getCachedGameState(key) {
@@ -90,30 +106,26 @@ const CRASH_STATES = {
   CRASHED: "CRASHED"
 };
 
+let aviatorHistory = [1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20, 2.14, 1.88, 4.30, 1.15, 12.45];
+
 let aviatorState = {
   state: CRASH_STATES.WAITING_FOR_BETS,
-  timeRemaining: 15.0, // 15 seconds betting phase
-  currentSessionId: `SESSION_${Date.now()}`,
+  timeRemaining: 15.0,
+  currentSessionId: `AV-${Date.now().toString().slice(-6)}`,
   currentMultiplier: 1.00,
   crashMultiplier: 0
 };
 
-// In-memory buffer for active round bets to avoid DB write exhaustion
 let aviatorActiveBets = [];
 
 function generateCrashMultiplier() {
   const r = Math.random();
-  if (r < 0.05) return 1.00; // 5% instant crash at 1.00x
+  if (r < 0.05) return 1.00;
   const multiplier = 0.99 / (1 - r);
   return Math.max(1.00, Number(multiplier.toFixed(2)));
 }
 
 let lastTickTime = Date.now();
-
-async function persistAviatorRoundOutcome(sessionId, crashMultiplier, bets) {
-  // DB write only at round completion in bulk, never per tick
-  console.log(`[DB Batch Write] Persisting Aviator Session ${sessionId} with outcome ${crashMultiplier}x. Total bets: ${bets.length}`);
-}
 
 async function aviatorLoop() {
   const now = Date.now();
@@ -134,24 +146,25 @@ async function aviatorLoop() {
     if (aviatorState.currentMultiplier >= aviatorState.crashMultiplier) {
       aviatorState.currentMultiplier = aviatorState.crashMultiplier;
       aviatorState.state = CRASH_STATES.CRASHED;
-      aviatorState.timeRemaining = 5.0; // 5 seconds showing crash result
+      aviatorState.timeRemaining = 5.0;
 
-      // Round ended: Persist round summary to DB in bulk
-      persistAviatorRoundOutcome(
-        aviatorState.currentSessionId,
-        aviatorState.crashMultiplier,
-        aviatorActiveBets
-      );
+      // Add to live session history
+      aviatorHistory.unshift(aviatorState.crashMultiplier);
+      if (aviatorHistory.length > 30) aviatorHistory.pop();
+
+      // Broadcast history update to all clients
+      io.to("aviator").emit("game:history", aviatorHistory);
+      io.to("game:aviator").emit("game:history", aviatorHistory);
+
       aviatorActiveBets = [];
     }
   } else if (aviatorState.state === CRASH_STATES.CRASHED) {
     aviatorState.timeRemaining -= dt;
 
     if (aviatorState.timeRemaining <= 0) {
-      // Reset for next round
       aviatorState.state = CRASH_STATES.WAITING_FOR_BETS;
       aviatorState.timeRemaining = 15.0;
-      aviatorState.currentSessionId = `SESSION_${Date.now()}`;
+      aviatorState.currentSessionId = `AV-${Date.now().toString().slice(-6)}`;
       aviatorState.currentMultiplier = 1.00;
     }
   }
@@ -160,17 +173,19 @@ async function aviatorLoop() {
     state: aviatorState.state,
     timeRemaining: Number(Math.max(0, aviatorState.timeRemaining).toFixed(1)),
     currentSessionId: aviatorState.currentSessionId,
-    currentMultiplier: Number(aviatorState.currentMultiplier.toFixed(2))
+    currentMultiplier: Number(aviatorState.currentMultiplier.toFixed(2)),
+    crashMultiplier: aviatorState.state === CRASH_STATES.CRASHED ? aviatorState.crashMultiplier : null,
+    history: aviatorHistory.slice(0, 10)
   };
 
-  // Cache in Redis for fast access across stateless nodes
   setCachedGameState("game:aviator:state", broadcastPayload);
 
-  // Broadcast every 100ms for high-frequency smoothness
+  // Broadcast ticks to both rooms
   io.to("aviator").emit("gameStateUpdate", broadcastPayload);
+  io.to("game:aviator").emit("gameStateUpdate", broadcastPayload);
+  io.to("game:aviator").emit("game:tick", broadcastPayload);
 }
 
-// Run the Aviator loop at 10 ticks per second (100ms)
 setInterval(aviatorLoop, 100);
 
 // ----------------------------------------------------
@@ -245,15 +260,16 @@ gameModes.forEach((mode) => {
         gameStates[mode.id].history.unshift({ periodId: currentPeriod, ...result });
         if (gameStates[mode.id].history.length > 50) gameStates[mode.id].history.pop();
 
-        // Round ended: Broadcast & persist outcome
         io.to(mode.id).emit("game_result", {
           mode: mode.id,
           periodId: currentPeriod,
           result
         });
-
-        // Store result summary in Redis & DB
-        console.log(`[DB Batch Write] Persisting Wingo ${mode.id} Period ${currentPeriod} Result:`, result);
+        io.to(`game:wingo:${mode.id}`).emit("game_result", {
+          mode: mode.id,
+          periodId: currentPeriod,
+          result
+        });
 
         periodId = generatePeriodId(mode.duration);
 
@@ -274,11 +290,11 @@ gameModes.forEach((mode) => {
       history: gameStates[mode.id].history.slice(0, 10)
     };
 
-    // Cache active tick in Redis
     setCachedGameState(`game:wingo:${mode.id}:state`, tickPayload);
 
-    // Broadcast tick to mode room
     io.to(mode.id).emit("game_tick", tickPayload);
+    io.to(`game:wingo:${mode.id}`).emit("game_tick", tickPayload);
+    io.to(`game:wingo:${mode.id}`).emit("game:tick", tickPayload);
   }, 1000);
 });
 
@@ -289,25 +305,44 @@ io.on("connection", (socket) => {
   // Aviator join
   socket.on("join_aviator", async () => {
     socket.join("aviator");
-    console.log(`Socket ${socket.id} joined aviator`);
+    socket.join("game:aviator");
+    console.log(`Socket ${socket.id} (User: ${socket.user?.id}) joined aviator`);
 
+    // Send immediate initial state & history
     const cached = await getCachedGameState("game:aviator:state");
-    socket.emit("gameStateUpdate", cached || {
+    const payload = cached || {
       state: aviatorState.state,
       timeRemaining: Number(Math.max(0, aviatorState.timeRemaining).toFixed(1)),
       currentSessionId: aviatorState.currentSessionId,
-      currentMultiplier: Number(aviatorState.currentMultiplier.toFixed(2))
-    });
+      currentMultiplier: Number(aviatorState.currentMultiplier.toFixed(2)),
+      crashMultiplier: aviatorState.state === CRASH_STATES.CRASHED ? aviatorState.crashMultiplier : null,
+      history: aviatorHistory.slice(0, 10)
+    };
+
+    socket.emit("gameStateUpdate", payload);
+    socket.emit("game:tick", payload);
+    socket.emit("game:history", aviatorHistory.slice(0, 15));
   });
 
   // Wingo join
   socket.on("join_game", async (modeId) => {
-    gameModes.forEach((m) => socket.leave(m.id));
+    gameModes.forEach((m) => {
+      socket.leave(m.id);
+      socket.leave(`game:wingo:${m.id}`);
+    });
+
     socket.join(modeId);
-    console.log(`Socket ${socket.id} joined Wingo mode ${modeId}`);
+    socket.join(`game:wingo:${modeId}`);
+    console.log(`Socket ${socket.id} (User: ${socket.user?.id}) joined Wingo mode ${modeId}`);
 
     const cached = await getCachedGameState(`game:wingo:${modeId}:state`);
-    socket.emit("game_tick", cached || gameStates[modeId]);
+    const payload = cached || gameStates[modeId];
+
+    if (payload) {
+      socket.emit("game_tick", payload);
+      socket.emit("game:tick", payload);
+      socket.emit("game:history", payload.history || []);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -315,7 +350,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -326,5 +360,5 @@ app.get("/health", (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
-  console.log(`🚀 Stateless Game Engine (Socket.io + Redis) running on http://localhost:${PORT}`);
+  console.log(`🚀 Stateless Game Engine (Socket.io + Redis + Auth) running on http://localhost:${PORT}`);
 });

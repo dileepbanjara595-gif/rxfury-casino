@@ -110,7 +110,7 @@ export default function ProfilePage() {
         
         {/* Header */}
         <div className="flex items-center mb-8">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors mr-4 bg-white/5 p-2 rounded-xl hover:bg-white/10 border border-white/5">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors mr-4 bg-white/5 p-2 rounded-xl hover:bg-white/10 border border-white/5">
             <ArrowDownLeft className="w-5 h-5 rotate-45" />
           </Link>
           <h1 className="text-3xl font-black tracking-widest uppercase flex items-center">

@@ -133,7 +133,7 @@ export default function HistoryPage() {
       {/* Header */}
       <header className="bg-[#0a0f16] border-b border-[#1f2937] px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center space-x-4">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
+          <Link href="/profile" className="text-gray-400 hover:text-white transition-colors">
             <ArrowLeft className="w-6 h-6" />
           </Link>
           <div className="flex items-center space-x-2">

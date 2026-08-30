@@ -2,56 +2,57 @@
 
 import { useUIStore } from '@/store/uiStore';
 import { useDepositModalStore } from '@/store/depositModalStore';
-import { X, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useCurrencyStore, CURRENCY_SYMBOLS } from '@/store/currencyStore';
+import { X, AlertCircle, Wallet, ArrowRight } from 'lucide-react';
 
 export default function InsufficientFundsModal() {
   const { isInsufficientFundsModalOpen, closeInsufficientFundsModal } = useUIStore();
   const { openModal } = useDepositModalStore();
-  const router = useRouter();
+  const { activeCurrency } = useCurrencyStore();
+  const sym = CURRENCY_SYMBOLS[activeCurrency] || '₹';
 
   if (!isInsufficientFundsModalOpen) return null;
 
   const handleAddFunds = () => {
     closeInsufficientFundsModal();
-    // Use the equivalent deposit route/modal in our architecture
     openModal('deposit', 'methods');
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[#131824] border border-gray-800 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      <div className="bg-[#131824] border border-red-500/30 rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 relative">
         
         {/* Header */}
         <div className="bg-red-500/10 p-6 flex flex-col items-center justify-center border-b border-red-500/20 relative">
           <button 
             onClick={closeInsufficientFundsModal}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
-          <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-4">
-            <AlertCircle className="w-8 h-8" />
+          <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mb-3 shadow-[0_0_20px_rgba(239,68,68,0.3)]">
+            <Wallet className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-black text-white text-center">Insufficient Funds</h2>
+          <h2 className="text-2xl font-black text-white text-center">Insufficient Balance</h2>
+          <p className="text-red-400 text-xs font-bold uppercase tracking-wider mt-1">Wallet Balance: {sym} 0.00</p>
         </div>
 
         {/* Body */}
         <div className="p-6 text-center">
-          <p className="text-gray-300 font-medium mb-6 leading-relaxed">
-            Please add money to your wallet to continue playing and placing bets.
+          <p className="text-gray-300 font-medium mb-6 text-sm leading-relaxed">
+            You must have an active wallet balance to enter and play real-money games. Please make a quick deposit to start playing.
           </p>
           
           <div className="flex flex-col gap-3">
             <button 
               onClick={handleAddFunds}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-transform active:scale-95"
+              className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black py-4 px-6 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 uppercase tracking-widest text-sm cursor-pointer"
             >
-              Add Funds Now
+              Deposit Now <ArrowRight className="w-4 h-4" />
             </button>
             <button 
               onClick={closeInsufficientFundsModal}
-              className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-4 px-6 rounded-xl transition-colors"
+              className="w-full bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-bold py-3.5 px-6 rounded-xl transition-colors text-xs uppercase tracking-wider cursor-pointer"
             >
               Cancel
             </button>

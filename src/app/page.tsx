@@ -8,6 +8,7 @@ import { Gamepad2, Gift, Crown, Users, Lock, Sparkles } from "lucide-react";
 import { useAuthModalStore } from "@/store/authModalStore";
 import { useRouter } from "next/navigation";
 import { useDepositModalStore } from "@/store/depositModalStore";
+import { useUIStore } from "@/store/uiStore";
 import LiveFeed from "@/components/LiveFeed";
 import { useCurrencyStore, CURRENCY_SYMBOLS, convertFromBase, formatCurrency } from "@/store/currencyStore";
 
@@ -26,31 +27,38 @@ export default function Home() {
   const { session, isLoading } = useUserStore();
   const { openModal } = useAuthModalStore();
   const { openModal: openDepositModal } = useDepositModalStore();
-  const { activeCurrency } = useCurrencyStore();
+  const { openInsufficientFundsModal } = useUIStore();
+  const { activeCurrency, baseBalance } = useCurrencyStore();
   const router = useRouter();
   const sym = CURRENCY_SYMBOLS[activeCurrency] || '₹';
 
+  // 1. Post-Login Deposit Popup Trigger
   useEffect(() => {
-    // Initial Visit Auth Trigger for non-authenticated users
-    if (!isLoading && !session?.user && !sessionStorage.getItem("authPromptShown")) {
+    if (session?.user && !sessionStorage.getItem("depositPromptShown")) {
       const timer = setTimeout(() => {
-        openModal('login');
-        sessionStorage.setItem("authPromptShown", "true");
+        openDepositModal('deposit', 'methods');
+        sessionStorage.setItem("depositPromptShown", "true");
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [session, isLoading, openModal]);
+  }, [session, openDepositModal]);
 
-  useEffect(() => {
-    // Only show deposit modal if user is logged in, and hasn't seen it yet in this session
-    if (session?.user && !sessionStorage.getItem("welcomeModalShown")) {
-      const timer = setTimeout(() => {
-        openDepositModal('deposit', 'methods');
-        sessionStorage.setItem("welcomeModalShown", "true");
-      }, 1500);
-      return () => clearTimeout(timer);
+  // 2. Interceptor for Game Clicks (Blocks navigation if balance <= 0)
+  const handleGameLaunch = (e: React.MouseEvent, gameId: string) => {
+    if (!session?.user) {
+      e.preventDefault();
+      router.push('/login');
+      return;
     }
-  }, [session]);
+
+    if (baseBalance <= 0) {
+      e.preventDefault();
+      openInsufficientFundsModal();
+      return;
+    }
+
+    router.push(`/games/play/${gameId}`);
+  };
 
   return (
     <div className="flex flex-col w-full relative">
@@ -83,12 +91,14 @@ export default function Home() {
             <button 
               onClick={() => {
                 if (!session?.user) {
-                  openModal('register');
+                  router.push('/login');
+                } else if (baseBalance <= 0) {
+                  openInsufficientFundsModal();
                 } else {
-                  router.push('/dashboard');
+                  router.push('/games');
                 }
               }}
-              className="px-10 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_30px_rgba(37,99,235,0.5)] hover:shadow-[0_0_50px_rgba(37,99,235,0.8)] text-lg hover:-translate-y-1"
+              className="px-10 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-[0_0_30px_rgba(37,99,235,0.5)] hover:shadow-[0_0_50px_rgba(37,99,235,0.8)] text-lg hover:-translate-y-1 cursor-pointer"
             >
               Start Playing
             </button>
@@ -105,7 +115,7 @@ export default function Home() {
       {/* 1.5 DYNAMIC LIVE WINS TICKER */}
       <LiveFeed />
 
-      {/* 2. GAMES SECTION */}
+      {/* 2. GAMES SECTION WITH ZERO-BALANCE BLOCKER */}
       <section 
         id="games" 
         className="min-h-screen py-24 px-4 md:px-8 bg-gray-950 flex flex-col items-center justify-center border-t border-gray-900"
@@ -126,14 +136,8 @@ export default function Home() {
               { id: "blackjack", name: "Blackjack", category: "Card", tag: "Live", isLive: true, color: "from-purple-500 to-purple-700", icon: "/images/games/blackjack.jpg" },
               { id: "solitaire", name: "Solitaire", category: "Skill", tag: "Skill", isLive: false, color: "from-emerald-500 to-emerald-700", icon: "/images/games/solitaire.jpg" }
             ].map((game) => (
-              <Link 
-                href={`/games/play/${game.id}`}
-                onClick={(e) => {
-                  if (!session?.user) {
-                    e.preventDefault();
-                    openModal('login');
-                  }
-                }}
+              <div 
+                onClick={(e) => handleGameLaunch(e, game.id)}
                 key={game.id} 
                 className="group relative rounded-2xl overflow-hidden border border-gray-700 hover:border-yellow-500/50 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_25px_rgba(234,179,8,0.25)] flex flex-col h-72 md:h-80 bg-gray-900 cursor-pointer"
               >
@@ -182,7 +186,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
           
@@ -223,7 +227,7 @@ export default function Home() {
               <div className="relative z-10">
                 <h3 className="text-3xl font-black text-white mb-3 drop-shadow-md">100% Welcome Bonus</h3>
                 <p className="text-purple-100 text-lg mb-8 max-w-md drop-shadow-md font-medium">Double your first deposit instantly up to {sym} {formatCurrency(convertFromBase(150000, activeCurrency), activeCurrency)}. Start your winning journey with a massive advantage.</p>
-                <button onClick={() => session?.user ? openDepositModal('deposit', 'methods') : openModal('register')} className="inline-block px-8 py-4 bg-white text-purple-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg cursor-pointer">Claim Now</button>
+                <button onClick={() => openDepositModal('deposit', 'methods')} className="inline-block px-8 py-4 bg-white text-purple-900 font-bold rounded-xl hover:bg-gray-100 transition-colors shadow-lg cursor-pointer">Claim Now</button>
               </div>
             </div>
 
@@ -244,7 +248,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4. VIP SECTION (STANDARDIZED PROGRESSION) */}
+      {/* 4. VIP SECTION */}
       <section 
         id="vip" 
         className="min-h-screen py-24 px-4 md:px-8 bg-gray-950 flex flex-col items-center justify-center border-t border-gray-900 relative"

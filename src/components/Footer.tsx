@@ -81,7 +81,7 @@ export default function Footer() {
               <li><Link href="/vip" className="hover:text-yellow-400 transition-colors flex items-center gap-1.5"><Award className="w-3.5 h-3.5 text-yellow-500" /> Elite VIP Club</Link></li>
               <li><Link href="/promotions" className="hover:text-yellow-400 transition-colors">Welcome Promotions</Link></li>
               <li><Link href="/affiliate" className="hover:text-yellow-400 transition-colors">3-Tier Affiliate Program</Link></li>
-              <li><Link href="/dashboard" className="hover:text-yellow-400 transition-colors">User Dashboard</Link></li>
+              <li><Link href="/profile" className="hover:text-yellow-400 transition-colors">User Profile</Link></li>
               <li>
                 <span className="text-gray-500">Support: </span>
                 <a href="mailto:team@rxfurygame.com" className="text-blue-400 hover:underline">team@rxfurygame.com</a>

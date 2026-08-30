@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, User, Activity, History, Settings, Timer } from "lucide-react";
+import { ArrowLeft, User, Activity, History, Settings, Timer, Wifi } from "lucide-react";
 import Link from "next/link";
 import { useCurrencyStore, CURRENCY_SYMBOLS, formatCurrency, convertFromBase, convertToBase } from "@/store/currencyStore";
-import { useUIStore } from "@/store/uiStore";
+import { useUserStore } from "@/store/userStore";
 import { io, Socket } from "socket.io-client";
 
 type GameState = "WAITING_FOR_BETS" | "GAME_RUNNING" | "CRASHED";
@@ -14,10 +14,12 @@ interface SyncState {
   timeRemaining: number;
   currentSessionId: string;
   currentMultiplier: number;
+  crashMultiplier?: number | null;
 }
 
 export default function AviatorGamePage() {
   const [mounted, setMounted] = useState(false);
+  const { session } = useUserStore();
   
   // Synced Server State
   const [syncState, setSyncState] = useState<SyncState>({
@@ -27,9 +29,11 @@ export default function AviatorGamePage() {
     currentMultiplier: 1.00
   });
 
+  const [recentHistory, setRecentHistory] = useState<number[]>([1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20]);
   const [betAmount, setBetAmount] = useState<number | "">("");
   const [isBetPlaced, setIsBetPlaced] = useState(false);
   const [cashedOutAt, setCashedOutAt] = useState<number | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
   
   const socketRef = useRef<Socket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -40,39 +44,86 @@ export default function AviatorGamePage() {
   const displayBalance = convertFromBase(baseBalance, activeCurrency);
   const sym = CURRENCY_SYMBOLS[activeCurrency];
 
-  // Dummy recent history
-  const recentHistory = [1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20];
-
   useEffect(() => {
-      setMounted(true);
-      const img = new window.Image();
-      img.src = "/plane.png";
-      planeImageRef.current = img;
-      
-      let isMounted = true;
+    setMounted(true);
+    const img = new window.Image();
+    img.src = "/plane.png";
+    planeImageRef.current = img;
 
-      const pollState = async () => {
-        try {
-          const res = await fetch('/api/games/state?game=aviator');
-          if (res.ok && isMounted) {
-            const data = await res.json();
-            setSyncState(data);
-          }
-        } catch (e) {
-          console.error("Failed to sync aviator state:", e);
+    let isSubscribed = true;
+
+    // 1. Establish Authenticated WebSocket Connection
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+    const userToken = session?.user?.id || (session?.user as any)?.supabaseId || "guest_session";
+
+    const socket = io(socketUrl, {
+      auth: {
+        token: userToken,
+        userId: session?.user?.id,
+        email: session?.user?.email
+      },
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000
+    });
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      if (isSubscribed) setIsConnected(true);
+      console.log("Connected to Aviator Game Server with Auth");
+      socket.emit("join_aviator");
+    });
+
+    socket.on("gameStateUpdate", (payload: SyncState & { history?: number[] }) => {
+      if (isSubscribed) {
+        setSyncState(payload);
+        if (payload.history && payload.history.length > 0) {
+          setRecentHistory(payload.history);
         }
-      };
+      }
+    });
 
-      pollState(); // Initial fetch
+    socket.on("game:tick", (payload: SyncState) => {
+      if (isSubscribed) setSyncState(payload);
+    });
 
-      // Fast polling loop to sync with serverless DB state
-      const interval = setInterval(pollState, 500); // 500ms sync loop
+    socket.on("game:history", (historyList: number[]) => {
+      if (isSubscribed && Array.isArray(historyList) && historyList.length > 0) {
+        setRecentHistory(historyList);
+      }
+    });
 
-      return () => {
-        isMounted = false;
-        clearInterval(interval);
-      };
-    }, []);
+    socket.on("disconnect", () => {
+      if (isSubscribed) setIsConnected(false);
+    });
+
+    // 2. High-Reliability Fallback Polling Loop
+    const pollState = async () => {
+      try {
+        const res = await fetch('/api/games/state?game=aviator');
+        if (res.ok && isSubscribed) {
+          const data = await res.json();
+          setSyncState(prev => ({
+            ...prev,
+            ...data,
+            currentSessionId: data.sessionId || prev.currentSessionId
+          }));
+        }
+      } catch (e) {
+        // Non-blocking fallback
+      }
+    };
+
+    pollState();
+    const interval = setInterval(pollState, 600);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+      socket.disconnect();
+    };
+  }, [session]);
 
   // Dynamic Canvas Rendering based on Server State
   useEffect(() => {
@@ -81,124 +132,153 @@ export default function AviatorGamePage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear frame
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (syncState.state === "GAME_RUNNING" || syncState.state === "CRASHED") {
       const startX = 0;
       const startY = canvas.height - 20;
 
-      // Reverse engineer elapsed time from current multiplier to match User's curve math
       const elapsedTime = Math.max(0, Math.log(syncState.currentMultiplier) / 0.00006);
       
       const x = Math.min((elapsedTime / 10000) * canvas.width, canvas.width - 20);
       const y = canvas.height - 20 - Math.min((syncState.currentMultiplier / 10) * canvas.height, canvas.height - 40);
 
-      // ==========================================
-      // 1. DRAW BLUE RAY / GLOW BACKGROUND (Under the curve)
-      // ==========================================
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.quadraticCurveTo(x * 0.5, startY, x, y); // Curve follow
-      ctx.lineTo(x, canvas.height); // Down to bottom
-      ctx.lineTo(startX, canvas.height); // Back to start bottom
-      ctx.closePath();
-
-      // Gradient color (Top to Bottom glow)
-      const gradient = ctx.createLinearGradient(0, y, 0, canvas.height);
-      gradient.addColorStop(0, 'rgba(233, 30, 99, 0.5)'); // Using pinkish/red to match RXFURY instead of blue, but user requested blue. I'll use blue as requested: 'rgba(0, 150, 255, 0.5)'
-      gradient.addColorStop(0, 'rgba(0, 150, 255, 0.5)');
-      gradient.addColorStop(1, 'rgba(0, 150, 255, 0.0)');
-      
-      ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // ==========================================
-      // 2. DRAW MAIN CURVE LINE
-      // ==========================================
       ctx.beginPath();
       ctx.moveTo(startX, startY);
       ctx.quadraticCurveTo(x * 0.5, startY, x, y);
-      ctx.strokeStyle = '#e91e63'; // Curve Color (Pinkish/Red)
+      ctx.lineTo(x, canvas.height);
+      ctx.lineTo(startX, canvas.height);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, y, 0, canvas.height);
+      gradient.addColorStop(0, 'rgba(239, 68, 68, 0.4)');
+      gradient.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(x * 0.5, startY, x, y);
+      ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 4;
       ctx.stroke();
 
-      // ==========================================
-      // 3. DRAW THE PLANE IMAGE
-      // ==========================================
-      const planeImg = planeImageRef.current;
-      if (planeImg && planeImg.complete && planeImg.naturalWidth > 0) {
-        ctx.drawImage(planeImg, x - 25, y - 25, 50, 50);
-      } else {
-        // Fallback dot
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(x, y, 6, 0, Math.PI * 2);
-        ctx.fill();
+      if (planeImageRef.current && planeImageRef.current.complete) {
+        ctx.save();
+        ctx.translate(x, y);
+        const angle = Math.atan2(y - startY, x - startX) * 0.3;
+        ctx.rotate(angle);
+        ctx.drawImage(planeImageRef.current, -25, -25, 50, 50);
+        ctx.restore();
       }
     }
+  }, [syncState]);
 
-    if (syncState.state === "CRASHED") {
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Reset Bet State when round resets to WAITING_FOR_BETS
+  useEffect(() => {
+    if (syncState.state === "WAITING_FOR_BETS") {
+      setIsBetPlaced(false);
+      setCashedOutAt(null);
     }
-  }, [syncState.currentMultiplier, syncState.state]);
+  }, [syncState.state]);
 
-  const handleBet = () => {
-    if (syncState.state !== "WAITING_FOR_BETS") return;
+  const handleBet = async () => {
     if (!betAmount || betAmount <= 0) return;
-    if (betAmount > displayBalance) {
-      useUIStore.getState().openInsufficientFundsModal();
+    if (displayBalance < Number(betAmount)) {
+      alert("Insufficient Balance");
       return;
     }
-    
-    // Optimistic UI update (Real app: send POST to /api/games/bet with currentSessionId)
-          // Calling actual backend API
-      fetch('/api/games/bet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: 'aviator', action: 'PLACE', betAmount: Number(betAmount), currency: activeCurrency })
-      }).then(res => res.json()).then(data => {
-        if (data.success) setBaseBalance(data.newBalanceBase);
-      });
+
+    const baseBetDeduction = convertToBase(Number(betAmount), activeCurrency);
+    setBaseBalance(baseBalance - baseBetDeduction);
     setIsBetPlaced(true);
-  };
 
-  const handleCashout = () => {
-    if (syncState.state !== "GAME_RUNNING" || !isBetPlaced || cashedOutAt) return;
-    
-    setCashedOutAt(syncState.currentMultiplier);
-    const winAmount = Number(betAmount) * syncState.currentMultiplier;
-    
-    // Optimistic UI update
-          fetch('/api/games/bet', {
+    try {
+      await fetch('/api/games/bet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId: 'aviator', action: 'CASHOUT', betAmount: Number(betAmount), multiplier: syncState.currentMultiplier, currency: activeCurrency })
-      }).then(res => res.json()).then(data => {
-        if (data.success) setBaseBalance(data.newBalanceBase);
+        body: JSON.stringify({ 
+          gameId: 'aviator', 
+          action: 'PLACE', 
+          betAmount: Number(betAmount), 
+          currency: activeCurrency,
+          sessionId: syncState.currentSessionId
+        })
       });
-    setIsBetPlaced(false);
+    } catch (e) {
+      console.error("Bet error:", e);
+    }
   };
 
-  if (!mounted) return null;
+  const handleCashout = async () => {
+    if (!isBetPlaced || cashedOutAt || syncState.state !== "GAME_RUNNING") return;
+
+    const currentMult = syncState.currentMultiplier;
+    setCashedOutAt(currentMult);
+
+    const winAmount = Number(betAmount) * currentMult;
+    const baseWinCredit = convertToBase(winAmount, activeCurrency);
+    setBaseBalance(baseBalance + baseWinCredit);
+
+    try {
+      await fetch('/api/games/bet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          gameId: 'aviator', 
+          action: 'CASHOUT', 
+          betAmount: Number(betAmount), 
+          multiplier: currentMult, 
+          currency: activeCurrency,
+          sessionId: syncState.currentSessionId
+        })
+      });
+    } catch (e) {
+      console.error("Cashout error:", e);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#0a0f16] text-white flex flex-col font-sans max-w-full pb-24 md:pb-8">
+    <div className="min-h-screen bg-[#070b10] text-gray-100 flex flex-col font-sans select-none overflow-x-hidden">
+      
+      {/* Top Navigation Bar */}
+      <div className="bg-[#0c121d] border-b border-gray-800 px-4 py-3 flex justify-between items-center z-20">
+        <div className="flex items-center space-x-4">
+          <Link href="/games" className="p-2 hover:bg-gray-800 rounded-xl transition-colors text-gray-400 hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex items-center space-x-2">
+            <span className="text-xl font-black text-red-500 tracking-wider">AVIATOR</span>
+            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full text-[10px] text-green-400 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+              Live Sync
+            </div>
+          </div>
+        </div>
 
+        {/* Global Real Balance Display */}
+        <div className="flex items-center space-x-3">
+          <div className="bg-[#131824] border border-gray-800 px-4 py-1.5 rounded-xl flex items-center space-x-2 shadow-inner">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Balance</span>
+            <span className="text-sm font-mono font-black text-emerald-400">
+              {sym} {formatCurrency(displayBalance, activeCurrency)}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {/* Main Game Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto w-full max-w-full relative">
+      {/* Main Game Arena */}
+      <div className="flex-1 flex flex-col lg:flex-row relative">
         
-        {/* Left Panel: Game Canvas */}
-        <div className="flex-1 flex flex-col relative bg-black shadow-[inset_0_0_100px_rgba(220,38,38,0.05)]">
+        {/* Left / Center Viewport */}
+        <div className="flex-1 flex flex-col bg-[#0f141f] relative min-h-[380px] lg:min-h-[500px]">
           
-          {/* History Bar */}
-          <div className="h-10 bg-[#131824]/80 border-b border-gray-800 flex items-center px-4 overflow-hidden gap-2">
-            <History className="w-4 h-4 text-gray-500 shrink-0 mr-2" />
+          {/* Recent Multipliers Bar */}
+          <div className="h-10 bg-[#0a0f16] border-b border-gray-800 flex items-center px-4 space-x-2 overflow-x-auto no-scrollbar z-10">
+            <History className="w-4 h-4 text-gray-500 mr-1 shrink-0" />
             {recentHistory.map((m, i) => (
-              <span key={i} className={`text-xs font-bold font-mono px-2 py-0.5 rounded-full border ${
-                m >= 10 ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20' :
+              <span key={i} className={`text-xs font-bold font-mono px-2.5 py-0.5 rounded-full border shrink-0 ${
+                m >= 10 ? 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20 shadow-[0_0_8px_rgba(217,70,239,0.3)]' :
                 m >= 2 ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
                 'bg-blue-500/10 text-blue-400 border-blue-500/20'
               }`}>
@@ -207,32 +287,37 @@ export default function AviatorGamePage() {
             ))}
           </div>
 
-          {/* Central Action Area */}
+          {/* Central Flight Canvas */}
           <div className="flex-1 flex items-center justify-center relative overflow-hidden">
-                        {/* Dynamic Server-Synced Canvas Curve */}
-            <canvas ref={canvasRef} width={800} height={400} className={`absolute inset-0 w-full h-full z-0 opacity-80 transition-opacity duration-300 ${syncState.state === "WAITING_FOR_BETS" ? "opacity-0" : "opacity-100"}`} />
-            {/* The Grid Background */}
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
+            <canvas 
+              ref={canvasRef} 
+              width={800} 
+              height={400} 
+              className={`absolute inset-0 w-full h-full z-0 opacity-90 transition-opacity duration-300 ${syncState.state === "WAITING_FOR_BETS" ? "opacity-0" : "opacity-100"}`} 
+            />
             
+            {/* Grid Pattern */}
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
+            
+            {/* State 1: WAITING FOR BETS */}
             {syncState.state === "WAITING_FOR_BETS" && (
               <div className="text-center z-10 animate-in fade-in zoom-in duration-300">
-                <Timer className="w-16 h-16 text-red-500 mx-auto mb-4 animate-pulse" />
-                <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-widest mb-2 drop-shadow-lg">
-                  Waiting
+                <Timer className="w-14 h-14 text-red-500 mx-auto mb-3 animate-pulse" />
+                <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-widest mb-2 drop-shadow-lg">
+                  Next Round In
                 </h2>
-                <p className="text-2xl font-mono text-red-400 font-bold tracking-widest bg-red-500/10 px-6 py-2 rounded-full border border-red-500/20 inline-block">
+                <p className="text-3xl font-mono text-red-400 font-black tracking-widest bg-red-500/10 px-8 py-2.5 rounded-full border border-red-500/30 inline-block shadow-[0_0_20px_rgba(239,68,68,0.2)]">
                   {syncState.timeRemaining.toFixed(1)}s
                 </p>
-                <p className="text-gray-500 text-xs mt-4 uppercase tracking-widest font-bold">Place your bets</p>
+                <p className="text-gray-400 text-xs mt-4 uppercase tracking-widest font-bold">Place your bets</p>
               </div>
             )}
 
+            {/* State 2: GAME RUNNING */}
             {syncState.state === "GAME_RUNNING" && (
               <div className="text-center z-10 flex flex-col items-center justify-center w-full h-full relative">
-                
-
                 <div className="relative z-20">
-                  <span className="text-[6rem] md:text-[8rem] font-black text-red-500 font-mono drop-shadow-[0_0_30px_rgba(239,68,68,0.5)]">
+                  <span className="text-[6rem] md:text-[8rem] font-black text-red-500 font-mono drop-shadow-[0_0_40px_rgba(239,68,68,0.6)]">
                     {syncState.currentMultiplier.toFixed(2)}
                   </span>
                   <span className="text-4xl font-bold text-red-400 ml-2">x</span>
@@ -240,34 +325,39 @@ export default function AviatorGamePage() {
               </div>
             )}
 
+            {/* State 3: CRASHED */}
             {syncState.state === "CRASHED" && (
               <div className="text-center z-10 bg-black/80 w-full h-full flex flex-col items-center justify-center backdrop-blur-sm animate-in fade-in duration-200">
-                <h2 className="text-3xl font-black text-gray-500 uppercase tracking-widest mb-4">Flew Away!</h2>
+                <h2 className="text-3xl md:text-4xl font-black text-red-500 uppercase tracking-widest mb-3 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                  Flew Away!
+                </h2>
                 <div className="relative z-20">
-                  <span className="text-6xl md:text-7xl font-black text-gray-400 font-mono">
-                    {syncState.currentMultiplier.toFixed(2)}
+                  <span className="text-6xl md:text-7xl font-black text-gray-300 font-mono">
+                    {(syncState.crashMultiplier || syncState.currentMultiplier).toFixed(2)}
                   </span>
-                  <span className="text-3xl font-bold text-gray-500 ml-2">x</span>
+                  <span className="text-3xl font-bold text-gray-400 ml-2">x</span>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Panel: Controls */}
-        <div className="w-full lg:w-[380px] bg-[#0a0f16] border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col">
+        {/* Right Panel: Betting Controls & Session Info */}
+        <div className="w-full lg:w-[380px] bg-[#0a0f16] border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col justify-between">
           
           <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#131824]">
              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Session ID:</span>
-             <span className="text-xs font-mono text-gray-400">Provably Fair</span>
+             <span className="text-xs font-mono text-emerald-400 font-bold tracking-wider">
+               {syncState.currentSessionId || "SYNCING..."}
+             </span>
           </div>
 
           <div className="p-6 flex-1 flex flex-col justify-center">
             
             <div className="bg-[#131824] border border-gray-800 rounded-2xl p-4 mb-6 shadow-xl">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Bet Amount</span>
-                <span className="text-sm font-bold text-gray-400">{sym}</span>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Bet Amount</span>
+                <span className="text-xs font-bold text-gray-400">{sym}</span>
               </div>
               
               <div className="flex gap-2">
@@ -287,7 +377,7 @@ export default function AviatorGamePage() {
                     key={amt}
                     disabled={isBetPlaced}
                     onClick={() => setBetAmount(amt)}
-                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold py-2 rounded-lg transition-colors disabled:opacity-50"
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {sym}{amt}
                   </button>
@@ -295,12 +385,12 @@ export default function AviatorGamePage() {
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Action Buttons */}
             {!isBetPlaced ? (
                <button 
                 onClick={handleBet}
                 disabled={syncState.state !== "WAITING_FOR_BETS" || !betAmount || betAmount <= 0}
-                className="w-full h-24 bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white rounded-2xl shadow-[0_10px_30px_rgba(239,68,68,0.3)] transition-all flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group border-t border-red-400/30"
+                className="w-full h-24 bg-gradient-to-b from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 text-white rounded-2xl shadow-[0_10px_30px_rgba(239,68,68,0.4)] transition-all flex flex-col items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group border-t border-red-400/30 cursor-pointer"
               >
                 <span className="text-3xl font-black uppercase tracking-widest drop-shadow-md group-hover:scale-105 transition-transform">Bet</span>
               </button>
@@ -310,13 +400,13 @@ export default function AviatorGamePage() {
                   disabled
                   className="w-full h-24 bg-gray-800 text-gray-400 rounded-2xl border border-gray-700 flex flex-col items-center justify-center opacity-80 cursor-not-allowed"
                 >
-                  <span className="text-xl font-bold uppercase tracking-widest mb-1">Waiting for next round</span>
-                  <span className="text-sm font-mono text-gray-500">Bet: {sym} {betAmount}</span>
+                  <span className="text-lg font-bold uppercase tracking-widest mb-1">Bet Placed</span>
+                  <span className="text-xs font-mono text-emerald-400 font-bold">Waiting for round to start...</span>
                 </button>
               ) : syncState.state === "GAME_RUNNING" && !cashedOutAt ? (
                 <button 
                   onClick={handleCashout}
-                  className="w-full h-24 bg-gradient-to-b from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white rounded-2xl shadow-[0_10px_30px_rgba(249,115,22,0.3)] transition-all flex flex-col items-center justify-center border-t border-orange-400/30 active:scale-95"
+                  className="w-full h-24 bg-gradient-to-b from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white rounded-2xl shadow-[0_10px_30px_rgba(249,115,22,0.4)] transition-all flex flex-col items-center justify-center border-t border-orange-400/30 active:scale-95 cursor-pointer"
                 >
                   <span className="text-2xl font-black uppercase tracking-widest drop-shadow-md mb-1">Cash Out</span>
                   <span className="text-lg font-mono font-bold">{sym} {(Number(betAmount) * syncState.currentMultiplier).toFixed(2)}</span>
@@ -326,11 +416,16 @@ export default function AviatorGamePage() {
                   disabled
                   className={`w-full h-24 rounded-2xl flex flex-col items-center justify-center ${cashedOutAt ? 'bg-emerald-600/20 border border-emerald-500/50 text-emerald-400' : 'bg-red-500/10 border border-red-500/20 text-red-400'}`}
                 >
-                  <span className="text-xl font-black uppercase tracking-widest mb-1">{cashedOutAt ? 'Winner' : 'Lost'}</span>
+                  <span className="text-xl font-black uppercase tracking-widest mb-1">{cashedOutAt ? 'Winner!' : 'Lost'}</span>
                   {cashedOutAt && <span className="text-sm font-mono font-bold">Won: {sym} {(Number(betAmount) * cashedOutAt).toFixed(2)}</span>}
                 </button>
               )
             )}
+          </div>
+
+          <div className="p-4 border-t border-gray-800/60 bg-[#070b10] flex justify-between items-center text-[10px] text-gray-500">
+            <span>Provably Fair RNG SHA-256</span>
+            <span className="text-emerald-500">Live Multiplier Stream Active</span>
           </div>
           
         </div>
@@ -338,11 +433,3 @@ export default function AviatorGamePage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-

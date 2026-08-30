@@ -65,7 +65,7 @@ export default function DepositModal() {
     return () => clearInterval(timer);
   }, [view, timeLeft]);
 
-  if (!isOpen || !user) return null;
+  if (!isOpen) return null;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
