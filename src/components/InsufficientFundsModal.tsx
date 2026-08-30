@@ -2,16 +2,24 @@
 
 import { useUIStore } from '@/store/uiStore';
 import { useDepositModalStore } from '@/store/depositModalStore';
-import { useCurrencyStore, CURRENCY_SYMBOLS } from '@/store/currencyStore';
-import { X, AlertCircle, Wallet, ArrowRight } from 'lucide-react';
+import { useCurrencyStore, CURRENCY_SYMBOLS, LIMITS, convertFromBase, formatCurrency } from '@/store/currencyStore';
+import { X, Wallet, ArrowRight } from 'lucide-react';
 
 export default function InsufficientFundsModal() {
   const { isInsufficientFundsModalOpen, closeInsufficientFundsModal } = useUIStore();
   const { openModal } = useDepositModalStore();
-  const { activeCurrency } = useCurrencyStore();
-  const sym = CURRENCY_SYMBOLS[activeCurrency] || '₹';
-
+  const { activeCurrency, baseBalance } = useCurrencyStore();
+  
   if (!isInsufficientFundsModalOpen) return null;
+
+  const currentBalance = convertFromBase(baseBalance, activeCurrency);
+  const formattedBalance = formatCurrency(currentBalance, activeCurrency);
+  const sym = CURRENCY_SYMBOLS[activeCurrency] || ',1';
+
+  // Dynamic Crypto Withdrawal Limit Calculation
+  // We use USDT as the standard crypto equivalent for display if crypto is active.
+  const cryptoEquivalent = convertFromBase(LIMITS.MIN_FIAT_WITHDRAW_INR, 'USDT');
+  const formattedCryptoLimit = formatCurrency(cryptoEquivalent, 'USDT');
 
   const handleAddFunds = () => {
     closeInsufficientFundsModal();
@@ -34,13 +42,17 @@ export default function InsufficientFundsModal() {
             <Wallet className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-black text-white text-center">Insufficient Balance</h2>
-          <p className="text-red-400 text-xs font-bold uppercase tracking-wider mt-1">Wallet Balance: {sym} 0.00</p>
+          <p className="text-red-400 text-xs font-bold uppercase tracking-wider mt-1">Wallet Balance: {sym} {formattedBalance}</p>
         </div>
 
         {/* Body */}
         <div className="p-6 text-center">
           <p className="text-gray-300 font-medium mb-6 text-sm leading-relaxed">
-            You must have an active wallet balance to enter and play real-money games. Please make a quick deposit to start playing.
+            {activeCurrency === 'INR' ? (
+              <>The minimum withdrawal amount for UPI is ₹{LIMITS.MIN_FIAT_WITHDRAW_INR}. Your current balance is ₹{formattedBalance}.</>
+            ) : (
+              <>The minimum withdrawal amount is {formattedCryptoLimit} USDT. Your current balance is {formattedBalance} {activeCurrency}.</>
+            )}
           </p>
           
           <div className="flex flex-col gap-3">

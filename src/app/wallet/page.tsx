@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useUserStore } from "@/store/userStore";
 import { useRouter } from "next/navigation";
-import { Wallet, ArrowDownLeft, ArrowUpRight, History, RefreshCw, CheckCircle2, Clock, XCircle } from "lucide-react";
-import { useCurrencyStore, CURRENCY_SYMBOLS, formatCurrency, convertFromBase } from "@/store/currencyStore";
-import Link from "next/link";
+import { Wallet, ArrowDownLeft, ArrowUpRight, History, RefreshCw, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { useCurrencyStore, CURRENCY_SYMBOLS, formatCurrency, convertFromBase, LIMITS } from "@/store/currencyStore";
 
 const MOCK_HISTORY = [
   { id: "tx_1", type: "deposit", amount: 50, currency: "USDT", date: "2026-08-24 14:30", status: "completed" },
@@ -18,7 +17,27 @@ export default function WalletPage() {
   const { baseBalance, activeCurrency, fetchBalances } = useCurrencyStore();
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
+
+  // Form states
+  const [amount, setAmount] = useState<number | "">("");
+  const [details, setDetails] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
   const currentBalance = convertFromBase(baseBalance, activeCurrency);
+  const isCrypto = activeCurrency !== 'INR';
+
+  // Dynamic limits
+  const minDeposit = isCrypto ? LIMITS.MIN_CRYPTO_DEPOSIT_USD : LIMITS.MIN_FIAT_DEPOSIT_INR;
+  // Withdraw limit is exact equivalent of ₹1500 in crypto
+  const minWithdraw = isCrypto 
+    ? convertFromBase(LIMITS.MIN_FIAT_WITHDRAW_INR, activeCurrency) 
+    : LIMITS.MIN_FIAT_WITHDRAW_INR;
+
+  const isDepositValid = amount !== "" && amount >= minDeposit;
+  const isWithdrawValid = amount !== "" && amount >= minWithdraw && amount <= currentBalance && details.trim().length >= 5;
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -33,6 +52,57 @@ export default function WalletPage() {
       </div>
     );
   }
+
+  const handleDepositSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isDepositValid) return;
+    
+    setErrorMsg("");
+    setSuccessMsg("");
+    setIsSubmitting(true);
+    
+    try {
+      // Stub for real deposit processing flow
+      await new Promise(r => setTimeout(r, 1000));
+      setSuccessMsg("Deposit request initiated. Please complete the payment.");
+      setAmount("");
+    } catch (err) {
+      setErrorMsg("Deposit failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isWithdrawValid) return;
+
+    setErrorMsg("");
+    setSuccessMsg("");
+    setIsSubmitting(true);
+    
+    try {
+      const res = await fetch("/api/wallet/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, details })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccessMsg("Withdrawal requested! Amount has been deducted and is pending admin approval.");
+        fetchBalances(user.id);
+        setAmount("");
+        setDetails("");
+      } else {
+        setErrorMsg(data.error || "Withdrawal failed");
+      }
+    } catch (err) {
+      setErrorMsg("Something went wrong");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen pt-28 pb-20 bg-[#0a0f16] text-white">
@@ -63,24 +133,123 @@ export default function WalletPage() {
                 </button>
               </div>
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-              <Link 
-                href="/wallet/deposit"
-                className="flex items-center justify-center px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105"
-              >
-                <ArrowDownLeft className="w-5 h-5 mr-2" />
-                Deposit
-              </Link>
-              <Link 
-                href="/wallet/withdraw"
-                className="flex items-center justify-center px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:scale-105"
-              >
-                <ArrowUpRight className="w-5 h-5 mr-2" />
-                Withdraw
-              </Link>
-            </div>
           </div>
+        </div>
+
+        {/* Unified Wallet Forms (Tabs) */}
+        <div className="bg-[#131824] border border-gray-800 rounded-3xl p-6 shadow-2xl mb-8">
+          <div className="flex gap-4 mb-6 border-b border-gray-800 pb-4">
+            <button
+              onClick={() => { setActiveTab("deposit"); setSuccessMsg(""); setErrorMsg(""); setAmount(""); }}
+              className={`flex-1 flex items-center justify-center py-4 rounded-xl font-black uppercase tracking-widest transition-all ${activeTab === 'deposit' ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-black shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-gray-800/50 text-gray-400 hover:text-white'}`}
+            >
+              <ArrowDownLeft className="w-5 h-5 mr-2" /> Deposit
+            </button>
+            <button
+              onClick={() => { setActiveTab("withdraw"); setSuccessMsg(""); setErrorMsg(""); setAmount(""); }}
+              className={`flex-1 flex items-center justify-center py-4 rounded-xl font-black uppercase tracking-widest transition-all ${activeTab === 'withdraw' ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-[0_0_20px_rgba(249,115,22,0.3)]' : 'bg-gray-800/50 text-gray-400 hover:text-white'}`}
+            >
+              <ArrowUpRight className="w-5 h-5 mr-2" /> Withdraw
+            </button>
+          </div>
+
+          {successMsg && (
+            <div className="bg-emerald-500/10 border border-emerald-500 text-emerald-400 p-4 rounded-xl flex items-start gap-3 mb-6">
+              <CheckCircle2 className="w-5 h-5 mt-0.5 shrink-0" />
+              <p className="font-medium">{successMsg}</p>
+            </div>
+          )}
+
+          {errorMsg && (
+            <div className="bg-red-500/10 border border-red-500 text-red-400 p-4 rounded-xl mb-6">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* DEPOSIT FORM */}
+          {activeTab === 'deposit' && (
+            <form onSubmit={handleDepositSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Deposit Amount ({activeCurrency})</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{CURRENCY_SYMBOLS[activeCurrency]}</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value) || "")}
+                    placeholder="0.00"
+                    className={`w-full bg-[#0a0a0f] border ${amount !== "" && amount < minDeposit ? 'border-red-500' : 'border-gray-800'} rounded-xl py-4 pl-8 pr-4 text-white font-bold text-xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all`}
+                  />
+                </div>
+                {amount !== "" && amount < minDeposit && (
+                  <p className="text-red-400 text-xs mt-2 font-bold flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Minimum deposit amount is {CURRENCY_SYMBOLS[activeCurrency]}{formatCurrency(minDeposit, activeCurrency)} {activeCurrency}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={!isDepositValid || isSubmitting}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all disabled:opacity-50 disabled:shadow-none"
+              >
+                {isSubmitting ? "Processing..." : "Proceed to Payment"}
+              </button>
+            </form>
+          )}
+
+          {/* WITHDRAW FORM */}
+          {activeTab === 'withdraw' && (
+            <form onSubmit={handleWithdrawSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Withdrawal Amount ({activeCurrency})</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">{CURRENCY_SYMBOLS[activeCurrency]}</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value) || "")}
+                    placeholder="0.00"
+                    className={`w-full bg-[#0a0a0f] border ${(amount !== "" && (amount < minWithdraw || amount > currentBalance)) ? 'border-red-500' : 'border-gray-800'} rounded-xl py-4 pl-8 pr-4 text-white font-bold text-xl focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all`}
+                  />
+                </div>
+                {amount !== "" && amount < minWithdraw && (
+                  <p className="text-red-400 text-xs mt-2 font-bold flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Minimum withdrawal amount is {CURRENCY_SYMBOLS[activeCurrency]}{formatCurrency(minWithdraw, activeCurrency)} {activeCurrency}
+                  </p>
+                )}
+                {amount !== "" && amount > currentBalance && (
+                  <p className="text-red-400 text-xs mt-2 font-bold flex items-center">
+                    <AlertCircle className="w-3 h-3 mr-1" />
+                    Amount exceeds available balance
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  Payout Details ({isCrypto ? 'Crypto Address' : 'UPI ID'})
+                </label>
+                <textarea
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder={isCrypto ? "Enter your USDT address (TRC20/ERC20)..." : "Enter your UPI ID (e.g. name@upi)..."}
+                  rows={2}
+                  className="w-full bg-[#0a0a0f] border border-gray-800 rounded-xl py-3 px-4 text-white font-mono focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!isWithdrawValid || isSubmitting}
+                className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black uppercase tracking-widest py-4 rounded-xl shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50 disabled:shadow-none"
+              >
+                {isSubmitting ? "Processing..." : "Submit Withdrawal"}
+              </button>
+            </form>
+          )}
         </div>
 
         {/* Transaction History */}

@@ -60,6 +60,13 @@ export const convertFromBase = (inrAmount: number, targetCurrency: Currency): nu
   return inrAmount / EXCHANGE_RATES[targetCurrency];
 };
 
+
+export const LIMITS = {
+  MIN_FIAT_DEPOSIT_INR: 100,
+  MIN_CRYPTO_DEPOSIT_USD: 5,
+  MIN_FIAT_WITHDRAW_INR: 1500,
+};
+
 export const useCurrencyStore = create<CurrencyState>()(
   persist(
     (set) => ({

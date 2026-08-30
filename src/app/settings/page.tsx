@@ -14,7 +14,7 @@ export default function AccountSettingsPage() {
   const { update } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"profile" | "password" | "withdrawal">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "password">("profile");
   
   // Profile State
   const [firstName, setFirstName] = useState(profileData?.firstName || "");
@@ -254,12 +254,6 @@ export default function AccountSettingsPage() {
           >
             <User className="w-4 h-4 mr-2" /> Profile
           </button>
-                    <button
-            onClick={() => setActiveTab("withdrawal")}
-            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold uppercase tracking-widest rounded-lg transition-all ${activeTab === "withdrawal" ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-black shadow-md" : "text-gray-400 hover:text-white"}`}
-          >
-            <Banknote className="w-4 h-4 mr-2" /> Withdrawal
-          </button>
           <button
             onClick={() => setActiveTab("password")}
             className={`flex-1 flex items-center justify-center py-3 text-sm font-bold uppercase tracking-widest rounded-lg transition-all ${
@@ -272,28 +266,6 @@ export default function AccountSettingsPage() {
           </button>
         </div>
 
-                {activeTab === "withdrawal" && (
-          <div className="bg-[#131824] border border-gray-800 rounded-3xl p-6 md:p-10 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-            <div className="text-center py-10">
-              <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Wallet className="w-10 h-10 text-emerald-500" />
-              </div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-widest mb-3">Withdraw Funds</h2>
-              <p className="text-gray-400 mb-8 max-w-md mx-auto">
-                Select your preferred withdrawal method to securely transfer your winnings to your bank account or crypto wallet.
-              </p>
-              <button 
-                onClick={() => {
-                  const { openModal } = useDepositModalStore.getState();
-                  openModal('withdraw', 'methods');
-                }}
-                className="inline-flex items-center justify-center px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black uppercase tracking-widest rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105"
-              >
-                <Banknote className="w-5 h-5 mr-2" /> Request Withdrawal
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Profile Tab */}
         {activeTab === "profile" && (

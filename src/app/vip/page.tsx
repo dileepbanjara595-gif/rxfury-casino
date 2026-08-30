@@ -287,7 +287,7 @@ export default function VIPClubPage() {
               
               <div className="space-y-3">
                 <Link 
-                  href="/wallet/deposit"
+                  href="/wallet"
                   className="w-full flex items-center justify-center py-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-500 uppercase tracking-widest shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all group"
                 >
                   Deposit Funds Now

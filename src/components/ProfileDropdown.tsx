@@ -98,16 +98,14 @@ export default function ProfileDropdown() {
               Settings
             </Link>
             
-                          <button 
-                onClick={() => {
-                  setIsOpen(false);
-                  useDepositModalStore.getState().openModal('deposit', 'methods');
-                }}
+                          <Link 
+              href="/wallet"
+              onClick={() => setIsOpen(false)}
               className="flex items-center px-4 py-3 text-sm font-bold text-gray-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors text-left"
             >
               <Wallet className="w-4 h-4 mr-3 text-emerald-400" />
               Wallet
-              </button>
+            </Link>
             
             <div className="my-1 border-t border-white/5"></div>
             
