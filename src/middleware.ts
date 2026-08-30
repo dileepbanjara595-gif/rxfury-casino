@@ -49,14 +49,34 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Strict Auth Wall: If user is not authenticated, redirect to /login
+  
+  // 3. Admin Panel Auth Wall
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
+    if (!token) {
+      const loginUrl = new URL('/admin/login', req.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    if ((token as any).role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 4. Strict Auth Wall for User Pages
   if (!token && pathname !== '/') {
+    // If it's the admin login page, allow it
+    if (pathname === '/admin/login') {
+      return NextResponse.next();
+    }
+    
     const loginUrl = new URL('/login', req.url);
     if (pathname !== '/') {
       loginUrl.searchParams.set('callbackUrl', pathname);
     }
     return NextResponse.redirect(loginUrl);
   }
+
 
   return NextResponse.next();
 }

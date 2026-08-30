@@ -67,9 +67,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
             </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
+            <Link href="/admin/settings" className="text-gray-400 hover:text-white transition-colors">
               <Settings className="w-5 h-5" />
-            </button>
+            </Link>
             <div className="w-8 h-8 bg-gradient-to-tr from-blue-500 to-emerald-500 rounded-full border-2 border-[#1f1f2e]"></div>
           </div>
         </header>
