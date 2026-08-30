@@ -25,6 +25,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <span className="font-bold text-sm">User Management</span>
           </Link>
 
+          
+          <Link href="/admin/sports" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-[#1a1a2e] hover:text-gray-200 transition-colors">
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="font-bold text-sm">Sports Manager</span>
+          </Link>
+
           <Link href="/admin/transactions" className="flex items-center space-x-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-[#1a1a2e] hover:text-gray-200 transition-colors">
             <CreditCard className="w-5 h-5" />
             <span className="font-bold text-sm">Payment Queue</span>

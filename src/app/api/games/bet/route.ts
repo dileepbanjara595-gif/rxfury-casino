@@ -1,3 +1,4 @@
+import { distributeCommission } from '@/lib/affiliate';
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
       // Deduct balance
       const updatedUser = await tx.user.update({
         where: { id: user.id },
-        data: { mainWalletBalance: { decrement: betAmount } }
+        data: { mainWalletBalance: { decrement: betAmount }, gamesPlayedCount: { increment: 1 } }
       });
 
       // Log transaction

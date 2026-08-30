@@ -1,3 +1,4 @@
+const SportsManager = require('./sports-manager');
 const { Server } = require("socket.io");
 const http = require("http");
 const express = require("express");
@@ -301,7 +302,223 @@ gameModes.forEach((mode) => {
 // ----------------------------------------------------
 // SOCKET CONNECTION & EVENT HANDLERS
 // ----------------------------------------------------
+
+// --- TEEN PATTI MULTIPLAYER ENGINE ---
+const bots = [
+  { id: 'bot-1', name: 'Bot_Vikash', avatar: 'https://i.pravatar.cc/150?u=bot1', balance: 50000, isBot: true },
+  { id: 'bot-2', name: 'Bot_Amit', avatar: 'https://i.pravatar.cc/150?u=bot2', balance: 75000, isBot: true },
+  { id: 'bot-3', name: 'Bot_Priya', avatar: 'https://i.pravatar.cc/150?u=bot3', balance: 32000, isBot: true },
+];
+
+const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+function getRandomCard() {
+  return { 
+    suit: suits[Math.floor(Math.random() * suits.length)], 
+    value: values[Math.floor(Math.random() * values.length)],
+    color: ['hearts', 'diamonds'].includes(suits[Math.floor(Math.random() * suits.length)]) ? 'text-red-500' : 'text-slate-900'
+  };
+}
+
+class TeenPattiTable {
+  constructor(id) {
+    this.id = id;
+    this.seats = [null, null, null, null, null]; // 5 seats
+    this.state = 'WAITING'; // WAITING, STARTING, PLAYING, SHOWDOWN
+    this.pot = 0;
+    this.currentTurnIdx = -1;
+    this.baseBet = 100;
+    this.countdown = 0;
+    this.history = []; // Array to hold last few results
+  }
+
+  addPlayer(player) {
+    const emptySeatIdx = this.seats.findIndex(s => s === null);
+    if (emptySeatIdx !== -1) {
+      this.seats[emptySeatIdx] = { ...player, seatIndex: emptySeatIdx, state: 'WAITING', cards: [], currentBet: 0, packed: false, seen: false };
+      return true;
+    }
+    return false;
+  }
+
+  removePlayer(userId) {
+    const idx = this.seats.findIndex(s => s && s.id === userId);
+    if (idx !== -1) {
+      this.seats[idx] = null;
+      // If active, pack them
+    }
+  }
+
+  get activePlayers() {
+    return this.seats.filter(s => s !== null);
+  }
+
+  get playingPlayers() {
+    return this.seats.filter(s => s !== null && !s.packed && s.state === 'PLAYING');
+  }
+
+  manageBots() {
+    if (this.state !== 'WAITING') return;
+    const realPlayers = this.seats.filter(s => s && !s.isBot).length;
+    const botPlayers = this.seats.filter(s => s && s.isBot).length;
+    const total = this.activePlayers.length;
+
+    // Remove bot if table full of real players
+    if (realPlayers > 0 && total === 5) {
+        const botIdx = this.seats.findIndex(s => s && s.isBot);
+        if(botIdx !== -1) this.seats[botIdx] = null;
+    }
+
+    // Add bot if < 3 total
+    if (total < 3) {
+      const availableBots = bots.filter(b => !this.seats.find(s => s && s.id === b.id));
+      if (availableBots.length > 0) {
+        this.addPlayer(availableBots[0]);
+      }
+    }
+  }
+
+  startRound() {
+    this.state = 'STARTING';
+    this.countdown = 5;
+    this.pot = 0;
+    // Charge ante
+    this.seats.forEach(s => {
+      if (s) {
+        s.state = 'PLAYING';
+        s.packed = false;
+        s.seen = false;
+        s.cards = [getRandomCard(), getRandomCard(), getRandomCard()];
+        s.currentBet = this.baseBet;
+        this.pot += this.baseBet;
+      }
+    });
+  }
+
+  nextTurn() {
+     const playing = this.playingPlayers;
+     if (playing.length <= 1) {
+        this.showdown();
+        return;
+     }
+
+     let nextIdx = (this.currentTurnIdx + 1) % 5;
+     let loops = 0;
+     while (loops < 5) {
+       const p = this.seats[nextIdx];
+       if (p && !p.packed && p.state === 'PLAYING') {
+          this.currentTurnIdx = nextIdx;
+          this.countdown = 15; // 15s turn
+          break;
+       }
+       nextIdx = (nextIdx + 1) % 5;
+       loops++;
+     }
+  }
+
+  showdown() {
+     this.state = 'SHOWDOWN';
+     const playing = this.playingPlayers;
+     
+     // Pick winner randomly for mock Prototype
+     let winner = playing.length > 0 ? playing[Math.floor(Math.random() * playing.length)] : null;
+     if (winner) {
+         winner.balance += this.pot;
+         // Simulate saving to DB via external webhook or API fetch here in prod
+         this.history.unshift({
+            roomId: this.id,
+            winnerName: winner.name,
+            potAmount: this.pot,
+            timestamp: new Date().toISOString()
+         });
+         if (this.history.length > 20) this.history.pop();
+     }
+
+     this.countdown = 10;
+     setTimeout(() => {
+        this.state = 'WAITING';
+        this.currentTurnIdx = -1;
+     }, 10000);
+  }
+
+  tick() {
+    this.manageBots();
+
+    if (this.state === 'WAITING' && this.activePlayers.length >= 2) {
+       this.startRound();
+    } else if (this.state === 'STARTING') {
+       this.countdown--;
+       if (this.countdown <= 0) {
+          this.state = 'PLAYING';
+          this.nextTurn();
+       }
+    } else if (this.state === 'PLAYING') {
+       this.countdown--;
+       
+       // Handle bot turn
+       const currPlayer = this.seats[this.currentTurnIdx];
+       if (currPlayer && currPlayer.isBot && this.countdown < 12) {
+          // Bot logic based on RTP: for now simple random
+          if (Math.random() > 0.8) {
+              currPlayer.packed = true;
+          } else {
+              this.pot += this.baseBet;
+              currPlayer.currentBet += this.baseBet;
+          }
+          this.nextTurn();
+       } else if (this.countdown <= 0) {
+          // Player timed out
+          if (currPlayer) currPlayer.packed = true;
+          this.nextTurn();
+       }
+    }
+  }
+
+  getState() {
+    return {
+      id: this.id,
+      state: this.state,
+      pot: this.pot,
+      countdown: this.countdown,
+      currentTurnIdx: this.currentTurnIdx,
+      seats: this.seats.map(s => {
+         if (!s) return null;
+         // Hide cards of others unless showdown
+         const showCards = this.state === 'SHOWDOWN' || !s.isBot; // Real client sees own cards in frontend
+         return {
+            id: s.id,
+            name: s.name,
+            avatar: s.avatar,
+            balance: s.balance,
+            seatIndex: s.seatIndex,
+            state: s.state,
+            packed: s.packed,
+            seen: s.seen,
+            cards: showCards ? s.cards : []
+         };
+      })
+    };
+  }
+}
+
+const tpTable = new TeenPattiTable('tp-table-1');
+setInterval(() => {
+  tpTable.tick();
+  io.to('game:teen-patti').emit('game:teen-patti:state', tpTable.getState());
+}, 1000);
+// --- END TEEN PATTI MULTIPLAYER ENGINE ---
+
+
+
+let sportsManager = null;
+
 io.on("connection", (socket) => {
+  if (!sportsManager) {
+     sportsManager = new SportsManager(io);
+  }
+  sportsManager.handleClient(socket);
+  
   // Aviator join
   socket.on("join_aviator", async () => {
     socket.join("aviator");

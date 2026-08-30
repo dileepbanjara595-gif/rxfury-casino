@@ -31,6 +31,7 @@ function AdminLoginContent() {
       const res = await signIn('credentials', {
         email,
         password,
+        isAdminLogin: 'true',
         redirect: false
       });
 

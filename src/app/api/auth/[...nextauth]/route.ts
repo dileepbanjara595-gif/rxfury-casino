@@ -9,11 +9,20 @@ export const authOptions: AuthOptions = {
       name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        isAdminLogin: { label: "Is Admin Login", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
+        }
+
+        
+        if (credentials?.isAdminLogin === 'true') {
+          if (credentials.email !== "admin963@rxfurygame.com" || credentials.password !== "@Mausam987") {
+            console.warn(`SECURITY WARNING: Unauthorized admin login attempt with email ${credentials.email}`);
+            throw new Error("Unauthorized. Super Admin access only.");
+          }
         }
 
         // HARDCODED ADMIN BYPASS

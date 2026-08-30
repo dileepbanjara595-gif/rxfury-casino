@@ -109,6 +109,13 @@ export default function Home() {
             >
               Explore Games
             </Link>
+              <Link 
+                href="/sports" 
+                className="inline-block px-10 py-4 bg-transparent border-2 border-green-500 text-green-500 font-bold rounded-xl hover:bg-green-500/10 transition-colors uppercase tracking-wider"
+              >
+                SPORTSBOOK
+              </Link>
+
           </div>
         </div>
       </section>

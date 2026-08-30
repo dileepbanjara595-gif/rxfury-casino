@@ -1,3 +1,4 @@
+import { distributeCommission } from '@/lib/affiliate';
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -86,6 +87,10 @@ export async function POST(req: Request) {
       return updatedTx;
     });
 
+    if (action === 'APPROVE' && transaction.type === 'DEPOSIT') {
+       distributeCommission(transaction.userId, transaction.amount).catch(console.error);
+    }
+    
     return NextResponse.json({ success: true, transaction: result });
   } catch (error) {
     console.error("Admin Transactions POST Error:", error);

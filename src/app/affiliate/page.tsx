@@ -27,8 +27,22 @@ const dummyDownline = [
 ];
 
 export default function AffiliatePage() {
+  const [dbAffiliateBalance, setDbAffiliateBalance] = useState(0);
+  const [commissions, setCommissions] = useState<any[]>([]);
+
+  useEffect(() => {
+     fetch('/api/affiliate/claim')
+       .then(r => r.json())
+       .then(d => {
+          if (d.affiliateWalletBalance !== undefined) {
+             setDbAffiliateBalance(d.affiliateWalletBalance);
+             setCommissions(d.recentCommissions || []);
+          }
+       }).catch(console.error);
+  }, []);
+
   const { user } = useUserStore();
-  const { affiliateBalance, activeCurrency, fetchBalances } = useCurrencyStore();
+  const { activeCurrency, fetchBalances } = useCurrencyStore();
   
   const [copiedLink, setCopiedLink] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -50,7 +64,7 @@ export default function AffiliatePage() {
   };
 
   const handleClaim = async () => {
-    if (!user || affiliateBalance <= 0) return;
+    if (!user || dbAffiliateBalance <= 0) return;
     
     setIsClaiming(true);
     setClaimStatus(null);
@@ -61,19 +75,19 @@ export default function AffiliatePage() {
       
       const { data: currentProfile, error: fetchError } = await supabase
         .from('profiles')
-        .select('mainWalletBalance, affiliateBalance')
+        .select('mainWalletBalance, dbAffiliateBalance')
         .eq('id', user.id)
         .single();
         
       if (fetchError) throw fetchError;
       
-      const newMain = (currentProfile.mainWalletBalance || 0) + currentProfile.affiliateBalance;
+      const newMain = (currentProfile.mainWalletBalance || 0) + currentProfile.dbAffiliateBalance;
       
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
           mainWalletBalance: newMain,
-          affiliateBalance: 0
+          dbAffiliateBalance: 0
         })
         .eq('id', user.id);
         
@@ -192,11 +206,11 @@ export default function AffiliatePage() {
             <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-2xl"></div>
             <div>
               <p className="text-green-400 text-sm font-bold uppercase tracking-wider mb-1">Available to Claim</p>
-              <h3 className="text-3xl font-black text-green-500 mb-4">{CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase(affiliateBalance, activeCurrency), activeCurrency)}</h3>
+              <h3 className="text-3xl font-black text-green-500 mb-4">{CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase(dbAffiliateBalance, activeCurrency), activeCurrency)}</h3>
             </div>
             <button 
               onClick={handleClaim}
-              disabled={isClaiming || affiliateBalance <= 0}
+              disabled={isClaiming || dbAffiliateBalance <= 0}
               className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.4)] hover:shadow-[0_0_25px_rgba(34,197,94,0.6)] transition-all disabled:opacity-50"
             >
               {isClaiming ? 'Claiming...' : 'Claim to Main Wallet'}
@@ -257,7 +271,7 @@ export default function AffiliatePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/50">
-                {dummyDownline.map((row) => (
+                {commissions.map((row) => (
                   <tr key={row.id} className="hover:bg-gray-800/30 transition-colors">
                     <td className="px-4 py-4 font-mono text-white whitespace-nowrap">{row.userId}</td>
                     <td className="px-4 py-4">
@@ -269,9 +283,9 @@ export default function AffiliatePage() {
                         {row.tier}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-right font-medium">{CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase(row.turnover, activeCurrency), activeCurrency)}</td>
+                    <td className="px-4 py-4 text-right font-medium">{CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase((row.amount * 50), activeCurrency), activeCurrency)}</td>
                     <td className="px-4 py-4 text-right">
-                      <span className="text-green-400 font-bold">+ {CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase(row.commission, activeCurrency), activeCurrency)}</span>
+                      <span className="text-green-400 font-bold">+ {CURRENCY_SYMBOLS[activeCurrency]} {formatCurrency(convertFromBase(row.amount, activeCurrency), activeCurrency)}</span>
                     </td>
                   </tr>
                 ))}

@@ -39,13 +39,15 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      let updatedUser = bet.user;
+      let updateData: any = { gamesPlayedCount: { increment: 1 } };
       if (winLossStatus === 'WIN' && payoutAmount > 0) {
-        updatedUser = await tx.user.update({
-          where: { id: bet.userId },
-          data: { mainWalletBalance: { increment: payoutAmount } }
-        });
+         updateData.mainWalletBalance = { increment: payoutAmount };
       }
+
+      const updatedUser = await tx.user.update({
+        where: { id: bet.userId },
+        data: updateData
+      });
 
       return { newBalance: updatedUser.mainWalletBalance, payoutAmount };
     });

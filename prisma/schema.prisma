@@ -40,7 +40,9 @@ model User {
   phone              String?   @unique
   passwordHash       String
   mainWalletBalance  Float     @default(0.0)
+  gamesPlayedCount   Int       @default(0)
   bonusWalletBalance Float     @default(0.0)
+  affiliateWalletBalance Float @default(0.0)
 
   vipLevelId Int      @default(1)
   vipLevel   VipLevel @relation(fields: [vipLevelId], references: [id])
@@ -58,6 +60,7 @@ model User {
 
   transactions      Transaction[]
   gameHistories     GameHistory[]
+  sportsBets        SportsBet[] @relation("SportsBettor")
   commissionsEarned AffiliateCommission[] @relation("CommissionEarner")
   commissionsGiven  AffiliateCommission[] @relation("CommissionGiver")
 }
@@ -111,6 +114,13 @@ model GameHistory {
   multiplier    Float?    @default(1.0)
   winLossStatus WinStatus
   payoutAmount  Float
+
+  roomId        String?
+  winnerId      String?
+  winnerName    String?
+  potAmount     Float?
+  playersData   Json?
+
   createdAt     DateTime  @default(now())
 }
 
@@ -156,4 +166,54 @@ model OTP {
   isUsed    Boolean  @default(false)
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+
+model Settings {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+
+model SportsMatch {
+  id          String   @id @default(uuid())
+  betradarId  String   @unique
+  sport       String   // Cricket, Football, Tennis
+  title       String
+  status      String   @default("PREMATCH") // PREMATCH, LIVE, COMPLETED
+  startTime   DateTime
+  isSuspended Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  markets     SportsMarket[]
+  bets        SportsBet[]
+}
+
+model SportsMarket {
+  id          String   @id @default(uuid())
+  matchId     String
+  type        String   // e.g. "1X2", "OVER_UNDER"
+  oddsData    Json     // Stores Back/Lay odds
+  isSuspended Boolean  @default(false)
+  
+  match       SportsMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  bets        SportsBet[]
+}
+
+model SportsBet {
+  id          String   @id @default(uuid())
+  userId      String
+  matchId     String
+  marketId    String
+  selection   String   // e.g. "HOME", "AWAY", "DRAW"
+  odds        Float
+  stake       Float
+  potentialPayout Float
+  status      String   @default("PENDING") // PENDING, WON, LOST, REFUNDED
+  createdAt   DateTime @default(now())
+
+  user        User         @relation("SportsBettor", fields: [userId], references: [id])
+  match       SportsMatch  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  market      SportsMarket @relation(fields: [marketId], references: [id], onDelete: Cascade)
 }
