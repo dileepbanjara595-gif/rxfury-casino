@@ -267,7 +267,7 @@ export default function WalletPage() {
                     settings.upiQrUrl ? (
                       <img src={settings.upiQrUrl} alt="UPI QR" className="w-40 h-40 object-cover" />
                     ) : (
-                      <QRCodeSVG value={`upi://pay?pa=${settings.activeUpiId}&pn=RXFURY&am=${amount}`} size={160} />
+                      <QRCodeSVG value={`upi://pay?pa=${encodeURIComponent(settings.activeUpiId || "")}&pn=${encodeURIComponent("RXFURY")}&am=${amount}&cu=INR`} size={160} />
                     )
                   )}
                 </div>
