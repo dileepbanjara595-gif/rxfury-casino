@@ -74,7 +74,8 @@ export default function DepositModal() {
             })
           });
           const data = await res.json();
-          if (data.success && data.address) {
+          console.log("API Response:", data);
+          if (data.success && typeof data.address === "string") {
             setDynamicAddress(data.address);
           }
         } catch (err) {
@@ -339,7 +340,7 @@ export default function DepositModal() {
           <div className="w-full max-w-sm bg-[#131824] border border-gray-800 rounded-xl p-4 mb-4 flex justify-between items-center">
             <div className="overflow-hidden">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Deposit Address</p>
-              <p className="text-sm font-mono text-gray-300 truncate pr-4">{isLoadingAddress ? "Generating..." : dynamicAddress}</p>
+              <p className="text-sm font-mono text-gray-300 truncate pr-4">{isLoadingAddress ? "Generating..." : (typeof dynamicAddress === "string" ? dynamicAddress : JSON.stringify(dynamicAddress)) || "Address unavailable"}</p>
             </div>
             <button onClick={() => handleCopy(dynamicAddress || "")} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors shrink-0">
               {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-gray-400" />}

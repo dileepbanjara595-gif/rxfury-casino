@@ -51,7 +51,8 @@ export default function WalletPage() {
             body: JSON.stringify({ userId: user?.id || 'guest', asset: 'USDT', depositChains: ['TRON'] })
           });
           const data = await res.json();
-          if (data.success) {
+          console.log("API Response:", data);
+          if (data.success && typeof data.address === "string") {
             setDynamicCryptoAddress(data.address);
           }
         } catch (e) {
@@ -308,7 +309,7 @@ export default function WalletPage() {
                    <div className="overflow-hidden">
                      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{isCrypto ? 'USDT (TRC20) Address' : 'UPI ID'}</p>
                      <p className="text-sm font-mono text-emerald-400 truncate pr-4">
-                       {isCrypto ? (isLoadingCrypto ? "Generating..." : dynamicCryptoAddress || settings.cryptoAddress) : settings.activeUpiId}
+                       {isCrypto ? (isLoadingCrypto ? "Generating..." : (typeof dynamicCryptoAddress === "string" ? dynamicCryptoAddress : JSON.stringify(dynamicCryptoAddress)) || settings.cryptoAddress || "Address unavailable") : settings.activeUpiId}
                      </p>
                    </div>
                    <button onClick={() => handleCopy(isCrypto ? settings.cryptoAddress : settings.activeUpiId)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg">

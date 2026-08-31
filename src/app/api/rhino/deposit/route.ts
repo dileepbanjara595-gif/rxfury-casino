@@ -41,13 +41,14 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
+    console.log("Rhino API Live Response:", JSON.stringify(data));
 
     // Optionally: Store the generated address mapping in your database using Supabase
     // await supabase.from('deposit_addresses').insert({ user_id: userId, address: data.address, provider: 'rhino' });
 
     return NextResponse.json({
       success: true,
-      address: data.address, // The generated multi-chain deposit address
+      address: typeof data.address === "string" ? data.address : (data.depositAddress || data.sda || data.payload?.address || "Address parsing failed"),
       details: data
     });
 
