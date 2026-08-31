@@ -37,6 +37,32 @@ export default function WalletPage() {
   const isWithdrawValid = amount !== "" && amount >= minWithdraw && amount <= currentBalance && details.trim().length >= 5;
   const isGatewaySubmitValid = details.trim().length >= 5;
 
+  const [dynamicCryptoAddress, setDynamicCryptoAddress] = useState<string>("");
+  const [isLoadingCrypto, setIsLoadingCrypto] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'deposit' && showGateway && isCrypto) {
+      const fetchAddress = async () => {
+        setIsLoadingCrypto(true);
+        try {
+          const res = await fetch('/api/rhino/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user?.id || 'guest', asset: 'USDT', depositChains: ['TRON'] })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setDynamicCryptoAddress(data.address);
+          }
+        } catch (e) {
+          console.error("Rhino fetch error:", e);
+        }
+        setIsLoadingCrypto(false);
+      };
+      fetchAddress();
+    }
+  }, [showGateway, isCrypto, activeTab, user]);
+
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/");
@@ -262,7 +288,13 @@ export default function WalletPage() {
                 {/* QR Code */}
                 <div className="bg-white p-4 rounded-xl mb-6 inline-block">
                   {isCrypto ? (
-                    <QRCodeSVG value={settings.cryptoAddress || "fallback"} size={160} />
+                    isLoadingCrypto ? (
+                    <div className="w-[160px] h-[160px] flex items-center justify-center">
+                      <span className="text-emerald-500 font-bold uppercase text-xs animate-pulse">Loading Live Address...</span>
+                    </div>
+                  ) : (
+                    <QRCodeSVG value={dynamicCryptoAddress || settings.cryptoAddress || "fallback"} size={160} />
+                  )
                   ) : (
                     settings.upiQrUrl ? (
                       <img src={settings.upiQrUrl} alt="UPI QR" className="w-40 h-40 object-cover" />
@@ -276,7 +308,7 @@ export default function WalletPage() {
                    <div className="overflow-hidden">
                      <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{isCrypto ? 'USDT (TRC20) Address' : 'UPI ID'}</p>
                      <p className="text-sm font-mono text-emerald-400 truncate pr-4">
-                       {isCrypto ? settings.cryptoAddress : settings.activeUpiId}
+                       {isCrypto ? (isLoadingCrypto ? "Generating..." : dynamicCryptoAddress || settings.cryptoAddress) : settings.activeUpiId}
                      </p>
                    </div>
                    <button onClick={() => handleCopy(isCrypto ? settings.cryptoAddress : settings.activeUpiId)} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg">

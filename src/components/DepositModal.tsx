@@ -17,20 +17,20 @@ const FIAT_METHODS = [
 ];
 
 const CRYPTO_METHODS = [
-  { id: "usdt_trc20", name: "USDT", network: "TRC20", symbol: "USDT", type: "crypto", address: "TXYZ...fake_trc20_address", min: 5 },
-  { id: "usdt_erc20", name: "USDT", network: "ERC20", symbol: "USDT", type: "crypto", address: "0xABC...fake_erc20_address", min: 10 },
-  { id: "usdt_bep20", name: "USDT", network: "BEP20", symbol: "USDT", type: "crypto", address: "0xDEF...fake_bep20_address", min: 5 },
-  { id: "usdt_sol", name: "USDT", network: "SOL", symbol: "USDT", type: "crypto", address: "SOL...fake_sol_address", min: 5 },
-  { id: "usdc_erc20", name: "USDC", network: "ERC20", symbol: "USDC", type: "crypto", address: "0xABC...fake_erc20_usdc", min: 10 },
-  { id: "usdc_sol", name: "USDC", network: "SOL", symbol: "USDC", type: "crypto", address: "SOL...fake_sol_usdc", min: 5 },
-  { id: "btc", name: "Bitcoin", network: "BTC", symbol: "BTC", type: "crypto", address: "bc1q...fake_btc_address", min: 0.001 },
-  { id: "eth", name: "Ethereum", network: "ERC20", symbol: "ETH", type: "crypto", address: "0xETH...fake_eth_address", min: 0.01 },
-  { id: "doge", name: "Dogecoin", network: "DOGE", symbol: "DOGE", type: "crypto", address: "DOGE...fake_doge_address", min: 50 },
-  { id: "ltc", name: "Litecoin", network: "LTC", symbol: "LTC", type: "crypto", address: "LTC...fake_ltc_address", min: 0.1 },
-  { id: "trx", name: "TRON", network: "TRX", symbol: "TRX", type: "crypto", address: "TXYZ...fake_trx_address", min: 50 },
-  { id: "sol", name: "Solana", network: "SOL", symbol: "SOL", type: "crypto", address: "SOL...fake_sol_address", min: 0.1 },
-  { id: "bch", name: "BitcoinCash", network: "BCH", symbol: "BCH", type: "crypto", address: "BCH...fake_bch_address", min: 0.05 },
-  { id: "bnb_bep20", name: "BNB", network: "BEP20", symbol: "BNB", type: "crypto", address: "0xBNB...fake_bnb_address", min: 0.05 },
+  { id: "usdt_trc20", name: "USDT", network: "TRC20", symbol: "USDT", type: "crypto", address: "", min: 5 },
+  { id: "usdt_erc20", name: "USDT", network: "ERC20", symbol: "USDT", type: "crypto", address: "", min: 10 },
+  { id: "usdt_bep20", name: "USDT", network: "BEP20", symbol: "USDT", type: "crypto", address: "", min: 5 },
+  { id: "usdt_sol", name: "USDT", network: "SOL", symbol: "USDT", type: "crypto", address: "", min: 5 },
+  { id: "usdc_erc20", name: "USDC", network: "ERC20", symbol: "USDC", type: "crypto", address: "", min: 10 },
+  { id: "usdc_sol", name: "USDC", network: "SOL", symbol: "USDC", type: "crypto", address: "", min: 5 },
+  { id: "btc", name: "Bitcoin", network: "BTC", symbol: "BTC", type: "crypto", address: "", min: 0.001 },
+  { id: "eth", name: "Ethereum", network: "ERC20", symbol: "ETH", type: "crypto", address: "", min: 0.01 },
+  { id: "doge", name: "Dogecoin", network: "DOGE", symbol: "DOGE", type: "crypto", address: "", min: 50 },
+  { id: "ltc", name: "Litecoin", network: "LTC", symbol: "LTC", type: "crypto", address: "", min: 0.1 },
+  { id: "trx", name: "TRON", network: "TRX", symbol: "TRX", type: "crypto", address: "", min: 50 },
+  { id: "sol", name: "Solana", network: "SOL", symbol: "SOL", type: "crypto", address: "", min: 0.1 },
+  { id: "bch", name: "BitcoinCash", network: "BCH", symbol: "BCH", type: "crypto", address: "", min: 0.05 },
+  { id: "bnb_bep20", name: "BNB", network: "BEP20", symbol: "BNB", type: "crypto", address: "", min: 0.05 },
 ];
 
 const WITHDRAW_METHODS = [
@@ -55,6 +55,37 @@ export default function DepositModal() {
   const [amount, setAmount] = useState<string>("");
   const [utr, setUtr] = useState<string>("");
   const [copied, setCopied] = useState(false);
+  const [dynamicAddress, setDynamicAddress] = useState<string>("");
+  const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  
+  useEffect(() => {
+    if (view === 'crypto_qr' && selectedMethod) {
+      const fetchAddress = async () => {
+        setIsLoadingAddress(true);
+        setDynamicAddress("");
+        try {
+          const res = await fetch('/api/rhino/deposit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              userId: user?.id || 'guest', 
+              asset: selectedMethod.symbol, 
+              depositChains: [selectedMethod.network] 
+            })
+          });
+          const data = await res.json();
+          if (data.success && data.address) {
+            setDynamicAddress(data.address);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+        setIsLoadingAddress(false);
+      };
+      fetchAddress();
+    }
+  }, [view, selectedMethod, user]);
+
   const [timeLeft, setTimeLeft] = useState(480); // 8 minutes
 
   useEffect(() => {
@@ -296,15 +327,21 @@ export default function DepositModal() {
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="bg-white p-4 rounded-xl mb-6 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
-            <QRCode value={selectedMethod?.address || "fallback"} size={180} />
+            {isLoadingAddress ? (
+              <div className="w-[180px] h-[180px] flex items-center justify-center">
+                <span className="text-gray-400 font-bold uppercase tracking-widest text-xs animate-pulse">Generating Live Address...</span>
+              </div>
+            ) : (
+              <QRCode value={dynamicAddress || "fallback"} size={180} />
+            )}
           </div>
 
           <div className="w-full max-w-sm bg-[#131824] border border-gray-800 rounded-xl p-4 mb-4 flex justify-between items-center">
             <div className="overflow-hidden">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Deposit Address</p>
-              <p className="text-sm font-mono text-gray-300 truncate pr-4">{selectedMethod?.address}</p>
+              <p className="text-sm font-mono text-gray-300 truncate pr-4">{isLoadingAddress ? "Generating..." : dynamicAddress}</p>
             </div>
-            <button onClick={() => handleCopy(selectedMethod?.address || "")} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+            <button onClick={() => handleCopy(dynamicAddress || "")} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors shrink-0">
               {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-gray-400" />}
             </button>
           </div>

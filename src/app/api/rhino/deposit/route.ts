@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const apiSecret = process.env.RHINO_API_SECRET;
+    const apiSecret = process.env.RHINO_API_SECRET || "SECRET-1ae4cef7-6064-43e9-bc81-6ad10dee9e10";
     if (!apiSecret) {
       return NextResponse.json({ error: 'Rhino API key is not configured' }, { status: 500 });
     }
