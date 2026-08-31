@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { matchId, selection, odds, stake } = body;
+    const { matchId, selection, odds, stake, sport, title } = body;
 
     if (!matchId || !selection || !odds || stake <= 0) {
       return NextResponse.json({ error: "Invalid bet parameters" }, { status: 400 });
@@ -20,15 +20,31 @@ export async function POST(req: Request) {
 
     // Process inside a transaction
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Check Match Status & Suspension
-      const match = await tx.sportsMatch.findUnique({ where: { betradarId: matchId } });
-      if (!match) throw new Error("Match not found");
-      if (match.isSuspended) throw new Error("Match is suspended by Admin");
-
-      // 2. Check Wallet Balance
+      // 1. Check Wallet Balance first
       const user = await tx.user.findUnique({ where: { id: session.user.id } });
       if (!user) throw new Error("User not found");
       if (user.mainWalletBalance < stake) throw new Error("Insufficient balance");
+
+      // Handle Mock Matches gracefully by upserting them on the fly if they don't exist
+      if (matchId.startsWith('mock-')) {
+         await tx.sportsMatch.upsert({
+            where: { betradarId: matchId },
+            update: {},
+            create: {
+               betradarId: matchId,
+               sport: sport || 'Unknown',
+               title: title || 'Mock Match',
+               status: 'LIVE',
+               isSuspended: false,
+               startTime: new Date()
+            }
+         });
+      }
+
+      // 2. Check Match Status & Suspension
+      const match = await tx.sportsMatch.findUnique({ where: { betradarId: matchId } });
+      if (!match) throw new Error("Match not found");
+      if (match.isSuspended) throw new Error("Match is suspended by Admin");
 
       // 3. Deduct Balance
       const updatedUser = await tx.user.update({
@@ -37,8 +53,7 @@ export async function POST(req: Request) {
       });
 
       // 4. Create Bet Record
-      // First ensure market exists (or mock it since we are pulling dynamically)
-      // For simplicity in this integration, we link to a dummy market or create it on the fly
+      // Ensure market exists
       let market = await tx.sportsMarket.findFirst({ where: { matchId: match.id, type: "1X2" } });
       if (!market) {
          market = await tx.sportsMarket.create({
@@ -70,6 +85,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error("Sports Bet Error:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    // Explicitly return 400 with the exact error message instead of crashing with a 500
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 400 });
   }
 }
