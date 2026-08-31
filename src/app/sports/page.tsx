@@ -180,7 +180,7 @@ export default function SportsPage() {
                              <span className="text-[10px] text-gray-500 font-bold uppercase mb-1">1</span>
                              <div className="flex gap-1">
                                <button 
-                                 onClick={() => setBetSlip({ matchId: match.betradarId, title: match.title, sport: match.sport, selection: '1', odds: match.odds['1'].back })}
+                                 onClick={() => { const o = match.odds['1']?.back; if(o) setBetSlip({ matchId: match.betradarId || match.id, title: match.title || match.teams || 'Match', sport: match.sport, selection: 'Home', odds: o }) }}
                                  className="w-14 h-10 bg-[#72bbef] hover:bg-[#5aaae6] text-black font-bold flex flex-col items-center justify-center rounded-sm transition-colors"
                                >
                                  <span className="text-sm">{match.odds['1']?.back || '-'}</span>
@@ -196,7 +196,7 @@ export default function SportsPage() {
                              <span className="text-[10px] text-gray-500 font-bold uppercase mb-1">X</span>
                              <div className="flex gap-1">
                                <button 
-                                 onClick={() => setBetSlip({ matchId: match.betradarId, title: match.title, sport: match.sport, selection: 'X', odds: match.odds['X'].back })}
+                                 onClick={() => { const o = match.odds['X']?.back; if(o) setBetSlip({ matchId: match.betradarId || match.id, title: match.title || match.teams || 'Match', sport: match.sport, selection: 'Draw', odds: o }) }}
                                  disabled={match.sport === 'Tennis' || match.odds['X']?.back === 0}
                                  className="w-14 h-10 bg-[#72bbef] hover:bg-[#5aaae6] text-black font-bold flex flex-col items-center justify-center rounded-sm transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
                                >
@@ -213,7 +213,7 @@ export default function SportsPage() {
                              <span className="text-[10px] text-gray-500 font-bold uppercase mb-1">2</span>
                              <div className="flex gap-1">
                                <button 
-                                 onClick={() => setBetSlip({ matchId: match.betradarId, title: match.title, sport: match.sport, selection: '2', odds: match.odds['2'].back })}
+                                 onClick={() => { const o = match.odds['2']?.back; if(o) setBetSlip({ matchId: match.betradarId || match.id, title: match.title || match.teams || 'Match', sport: match.sport, selection: 'Away', odds: o }) }}
                                  className="w-14 h-10 bg-[#72bbef] hover:bg-[#5aaae6] text-black font-bold flex flex-col items-center justify-center rounded-sm transition-colors"
                                >
                                  <span className="text-sm">{match.odds['2']?.back || '-'}</span>
