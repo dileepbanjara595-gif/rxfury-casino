@@ -6,6 +6,43 @@ import Link from "next/link";
 import { useCurrencyStore, CURRENCY_SYMBOLS, formatCurrency, convertFromBase, convertToBase } from "@/store/currencyStore";
 import { useUserStore } from "@/store/userStore";
 import { io, Socket } from "socket.io-client";
+import React, { Component, ReactNode } from 'react';
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(_: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Aviator Game Error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[500px] bg-black text-white p-6 text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-2 uppercase tracking-widest text-red-400">Connection Interrupted</h2>
+          <p className="text-gray-400 max-w-md">The game session encountered a rendering error or lost connection. Don't worry, any confirmed bets are safely recorded on the server.</p>
+          <button onClick={() => window.location.reload()} className="mt-6 px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded">
+            RELOAD GAME
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 
 type GameState = "WAITING_FOR_BETS" | "GAME_RUNNING" | "CRASHED";
 
@@ -29,7 +66,7 @@ export default function AviatorGamePage() {
     currentMultiplier: 1.00
   });
 
-  const [recentHistory, setRecentHistory] = useState<number[]>([1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20]);
+  const [recentHistory, setRecentHistory] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState<number | "">("");
   const [isBetPlaced, setIsBetPlaced] = useState(false);
   const [cashedOutAt, setCashedOutAt] = useState<number | null>(null);
@@ -46,6 +83,7 @@ export default function AviatorGamePage() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Fetch real history on load
@@ -61,13 +99,14 @@ export default function AviatorGamePage() {
       })
       .catch(e => console.error("History fetch error", e));
       
-    // Fallback if socket doesn't send history within 2 seconds
+    // If no history in 3 seconds, leave empty so UI shows "Live history currently unavailable - reconnecting..."
     const fallbackTimer = setTimeout(() => {
-       setRecentHistory(prev => prev.length === 0 ? [1.24, 2.50, 1.05, 5.40, 1.12, 18.90, 1.01, 3.20] : prev);
-    }, 2000);
+       setRecentHistory(prev => prev.length === 0 ? [] : prev);
+    }, 3000);
     return () => clearTimeout(fallbackTimer);
   }, []);
 
+  useEffect(() => {
     const img = new window.Image();
     img.src = "/plane.png";
     planeImageRef.current = img;
@@ -261,6 +300,7 @@ export default function AviatorGamePage() {
   };
 
   return (
+  <ErrorBoundary>
     <div className="min-h-screen bg-[#070b10] text-gray-100 flex flex-col font-sans select-none overflow-x-hidden">
       
       {/* Top Navigation Bar */}
@@ -453,5 +493,6 @@ export default function AviatorGamePage() {
         </div>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
