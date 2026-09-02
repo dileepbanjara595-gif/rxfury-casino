@@ -86,18 +86,18 @@ export default function AviatorGamePage() {
   }, []);
 
   useEffect(() => {
-    // Fetch real history & state on load from RapidAPI
+    // Fetch real history & state on load from RapidAPI safely
     fetch('/api/games/aviator/live')
       .then(res => res.json())
       .then(payload => {
-        if (payload.success && payload.data) {
+        if (payload.data) {
            setSyncState(prev => ({ ...prev, ...payload.data }));
            if (payload.data.history && payload.data.history.length > 0) {
              setRecentHistory(payload.data.history);
            }
         }
       })
-      .catch(e => console.error("RapidAPI fetch error", e));
+      .catch(e => console.error("RapidAPI initial fetch error", e));
       
     // If no history in 3 seconds, leave empty so UI shows "Live history currently unavailable - reconnecting..."
     const fallbackTimer = setTimeout(() => {
@@ -159,37 +159,57 @@ export default function AviatorGamePage() {
       if (isSubscribed) setIsConnected(false);
     });
 
-    // 2. High-Reliability Fallback Polling Loop
-    // 2. Live Multiplier Polling Loop (via RapidAPI Bet7k)
+    // 2. Live Multiplier Polling Loop (via RapidAPI Bet7k) with Exponential Backoff
+    let timeoutId: NodeJS.Timeout;
+    let failCount = 0;
+
     const pollState = async () => {
+      if (!isSubscribed) return;
       try {
         const res = await fetch('/api/games/aviator/live');
-        if (res.ok && isSubscribed) {
+        if (res.ok) {
           const payload = await res.json();
-          if (payload.success && payload.data) {
+          
+          // Reset fail count if we get a valid payload, even if it's a fallback
+          // But if payload.fallback is true, we could optionally increase delay slightly, 
+          // let's just reset fail count because the backend handled it gracefully.
+          if (payload.data) {
+            failCount = payload.fallback ? Math.min(failCount + 1, 3) : 0;
+            
             setSyncState(prev => ({
               ...prev,
               ...payload.data,
               currentSessionId: payload.data.currentSessionId || prev.currentSessionId
             }));
             
-            // Sync history dynamically from the live RapidAPI feed
             if (payload.data.history && Array.isArray(payload.data.history) && payload.data.history.length > 0) {
               setRecentHistory(payload.data.history);
             }
+          } else {
+            failCount++;
           }
+        } else {
+          failCount++;
         }
       } catch (e) {
+        failCount++;
         console.error("Live Aviator API Sync Error:", e);
+      }
+      
+      if (isSubscribed) {
+        // Exponential backoff: starts at 600ms, maxes out at 8000ms if failing
+        const baseDelay = 600;
+        const maxDelay = 8000;
+        const nextDelay = failCount > 0 ? Math.min(baseDelay * Math.pow(1.5, failCount), maxDelay) : baseDelay;
+        timeoutId = setTimeout(pollState, nextDelay);
       }
     };
 
     pollState();
-    const interval = setInterval(pollState, 600);
 
     return () => {
       isSubscribed = false;
-      clearInterval(interval);
+      clearTimeout(timeoutId);
       socket.disconnect();
     };
   }, [session]);

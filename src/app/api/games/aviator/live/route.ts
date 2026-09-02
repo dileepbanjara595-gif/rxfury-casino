@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second strict timeout
+
+  // Safe fallback data in case RapidAPI fails or times out
+  const fallbackData = {
+    state: 'WAITING_FOR_BETS',
+    currentMultiplier: 1.0,
+    crashMultiplier: null,
+    timeRemaining: 0,
+    currentSessionId: `live_fallback_${Date.now()}`,
+    history: []
+  };
+
   try {
     const url = 'https://bet7k-aviator-api.p.rapidapi.com/bet7k-aviator-latest';
     const options = {
@@ -8,23 +21,26 @@ export async function GET() {
       headers: {
         'x-rapidapi-host': 'bet7k-aviator-api.p.rapidapi.com',
         'x-rapidapi-key': '7e99383812msh94bfc68e0efd9c1p1f4e7cjsn2a5caa8d72c6'
-      }
+      },
+      signal: controller.signal
     };
 
     const response = await fetch(url, options);
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.error('RapidAPI Fetch Error:', response.statusText);
-      return NextResponse.json(
-        { error: 'Failed to fetch live Aviator data', status: response.status },
-        { status: 502 }
-      );
+      const errorText = await response.text();
+      console.error('RapidAPI Fetch Error (Returning Fallback):', response.status, errorText);
+      return NextResponse.json({ 
+        success: false, 
+        fallback: true,
+        data: fallbackData,
+        message: 'RapidAPI returned an error'
+      }, { status: 200 }); // Return 200 so frontend doesn't crash
     }
 
     const data = await response.json();
 
-    // The precise schema of this rapidAPI depends on Bet7k endpoints.
-    // Safely mapping common potential fields to the frontend state structure:
     let state = 'WAITING_FOR_BETS';
     if (data.status === 'running' || data.state === 'running' || data.is_flying) state = 'GAME_RUNNING';
     else if (data.status === 'crashed' || data.state === 'crashed' || data.has_crashed) state = 'CRASHED';
@@ -44,10 +60,18 @@ export async function GET() {
       success: true,
       data: mappedState,
       raw: data
-    });
+    }, { status: 200 });
 
   } catch (error: any) {
-    console.error('Aviator Live Route Error:', error.message);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    clearTimeout(timeoutId);
+    console.error('Aviator Live Route Exception (Returning Fallback):', error.message);
+    
+    // Return safe fallback JSON even on severe errors/timeouts
+    return NextResponse.json({ 
+      success: false,
+      fallback: true,
+      data: fallbackData,
+      message: error.name === 'AbortError' ? 'Request timed out' : 'Internal Server Error'
+    }, { status: 200 });
   }
 }
