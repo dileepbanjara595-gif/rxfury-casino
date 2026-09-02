@@ -44,6 +44,11 @@ export default function WingoGamePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [myBets, setMyBets] = useState<any[]>([]);
 
+  // Result Popup State
+  const [showResultPopup, setShowResultPopup] = useState(false);
+  const [popupResult, setPopupResult] = useState<any>(null);
+  const lastHistoryRef = useRef<string>("");
+
   useEffect(() => {
     setMounted(true);
     let isSubscribed = true;
@@ -134,6 +139,47 @@ export default function WingoGamePage() {
       socket.disconnect();
     };
   }, [activeMode, session]);
+
+  // Handle Round Transitions and Result Popups
+  useEffect(() => {
+    if (history.length > 0) {
+      const latest = history[0];
+      if (lastHistoryRef.current && lastHistoryRef.current !== latest.periodId) {
+        // Trigger popup on new period finish
+        const userBets = myBets.filter(b => String(b.period) === String(latest.periodId));
+        let totalWin = 0;
+        let totalLoss = 0;
+        let won = false;
+        
+        userBets.forEach(bet => {
+           const selection = bet.selection.toLowerCase();
+           const sizeMatch = selection === latest.size?.toLowerCase();
+           const colorMatch = selection === latest.color?.toLowerCase();
+           const numMatch = bet.selection === String(latest.number);
+           
+           if (sizeMatch || colorMatch || numMatch) {
+             won = true;
+             if (["big", "small"].includes(selection)) totalWin += bet.amount * 1.96;
+             else if (["red", "green"].includes(selection)) totalWin += bet.amount * 1.96; 
+             else if (selection === "violet") totalWin += bet.amount * 4.5;
+             else totalWin += bet.amount * 9;
+           } else {
+             totalLoss += bet.amount;
+           }
+        });
+        
+        setPopupResult({
+          ...latest,
+          winAmount: won ? totalWin : 0,
+          lossAmount: !won && userBets.length > 0 ? totalLoss : 0,
+          didBet: userBets.length > 0
+        });
+        setShowResultPopup(true);
+        setTimeout(() => setShowResultPopup(false), 4000);
+      }
+      lastHistoryRef.current = latest.periodId;
+    }
+  }, [history, myBets]);
 
   const handleOpenBet = (type: string, value: string, color: string) => {
     if (timeLeft <= 3) return;
