@@ -66,16 +66,24 @@ export async function POST(request: Request) {
     };
 
     if (!authRes.ok) {
-      const authErr = await authRes.text();
+      const authErrText = await authRes.text();
+      let parsedErr = authErrText;
+      try { parsedErr = JSON.parse(authErrText); } catch(e) {}
+      
+      console.error("Rhino Live API Error Details:", parsedErr);
       console.error('Rhino.fi Authentication Error - Status:', authRes.status);
-      console.error('Rhino.fi Authentication Error - Body:', authErr);
       console.error('Rhino.fi Authentication Error - Triggering mock fallback to prevent UI block');
       
+      console.log(`DEBUG: Evaluated API Secret starting with: ${apiSecret.substring(0, 10)}...`);
+      if (apiSecret === "SECRET-1ae4cef7-6064-43e9-bc81-6ad10dee9e10") {
+         console.warn("WARNING: You are still using the hardcoded test API key because process.env.RHINO_API_SECRET is not set or not loading properly in Vercel.");
+      }
+
       // Robust fallback for development / invalid test keys
       return NextResponse.json({
         success: true,
         address: generateMockAddress(rhinoChain),
-        details: { fallback: true, reason: 'Authentication failed, using mock address', error: authErr, status: authRes.status }
+        details: { fallback: true, reason: 'Authentication failed, using mock address', error: parsedErr, status: authRes.status }
       });
     }
 
@@ -98,14 +106,18 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Rhino.fi API Error - Status:', response.status);
-      console.error('Rhino.fi API Error - Body:', errorText);
+      let parsedErr = errorText;
+      try { parsedErr = JSON.parse(errorText); } catch(e) {}
+
+      console.error("Rhino Live API Error Details:", parsedErr);
+      console.error('Rhino.fi SDA Generation Error - Status:', response.status);
+      console.error('Rhino.fi SDA Request Payload:', JSON.stringify(rhinoPayload));
       console.error('Rhino.fi API Error - Triggering mock fallback to prevent UI block');
       
       return NextResponse.json({
         success: true,
         address: generateMockAddress(rhinoChain),
-        details: { fallback: true, reason: 'SDA generation failed, using mock address', error: errorText, status: response.status }
+        details: { fallback: true, reason: 'SDA generation failed, using mock address', error: parsedErr, status: response.status }
       });
     }
 
