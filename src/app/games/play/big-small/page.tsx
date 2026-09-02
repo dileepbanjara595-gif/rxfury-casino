@@ -112,6 +112,11 @@ export default function WingoGamePage() {
           setPeriodId(data.periodId);
           setTimeLeft(Math.floor(data.timeLeft));
           
+          // CRITICAL FIX: Extract history from backend polling loop
+          if (data.history && Array.isArray(data.history) && data.history.length > 0) {
+            setHistory(data.history);
+          }
+          
           if (data.timeLeft <= 3) {
             setShowBetModal(false);
           }

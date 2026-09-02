@@ -107,18 +107,26 @@ async function handleWingoState(mode: string) {
   else if (mode === "wingo_5m") duration = 300;
   else if (mode === "wingo_10m") duration = 600;
    
-  const now = new Date();
+  // Universal UTC Epoch logic
+  const nowEpoch = Date.now();
+  const currentPeriodNum = Math.floor(nowEpoch / (duration * 1000));
   
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const secondsSinceMidnight = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  const periodNum = Math.floor(secondsSinceMidnight / duration) + 1;
-  const periodId = `${dateStr}${duration}${periodNum.toString().padStart(4, "0")}`;
+  // Calculate start of UTC day for cleaner ID numbering
+  const d = new Date(currentPeriodNum * duration * 1000);
+  const dateStr = d.toISOString().slice(0, 10).replace(/-/g, "");
+  
+  const startOfDayEpoch = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const secondsSinceMidnightUTC = Math.floor((currentPeriodNum * duration * 1000 - startOfDayEpoch) / 1000);
+  const periodCount = Math.floor(secondsSinceMidnightUTC / duration) + 1;
+  
+  const periodId = `${dateStr}${duration}${periodCount.toString().padStart(4, "0")}`;
 
-  const periodStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime() + (Math.floor(secondsSinceMidnight / duration) * duration * 1000);
-  const timeLeft = Math.max(0, (periodStartTime + duration * 1000 - now.getTime()) / 1000);
+  const nextPeriodEpoch = (currentPeriodNum + 1) * duration * 1000;
+  const timeLeft = Math.max(0, (nextPeriodEpoch - nowEpoch) / 1000);
 
+  // Isolate by exact mode instead of generic 'wingo'
   let session = await prisma.gameSession.findFirst({
-    where: { gameName: "wingo", id: periodId }
+    where: { gameName: mode, id: periodId }
   });
 
   if (!session) {
@@ -133,7 +141,7 @@ async function handleWingoState(mode: string) {
     session = await prisma.gameSession.create({
       data: {
         id: periodId,
-        gameName: "wingo",
+        gameName: mode, // Save as wingo_30s instead of wingo
         serverSeed: Math.random().toString(36).substring(2, 15),
         resultOutcome: resultJson,
         status: "BETTING"
@@ -141,10 +149,30 @@ async function handleWingoState(mode: string) {
     });
   }
 
+  // Fetch true history for THIS mode
+  const pastSessions = await prisma.gameSession.findMany({
+    where: { gameName: mode, id: { not: periodId } },
+    orderBy: { createdAt: 'desc' },
+    take: 30
+  });
+
+  const history = pastSessions.map(s => {
+    let res = null;
+    try { if (s.resultOutcome) res = JSON.parse(s.resultOutcome); } catch(e) {}
+    return {
+      periodId: s.id,
+      number: res?.number ?? 0,
+      size: res?.size ?? "Small",
+      color: res?.color ?? "Red",
+      createdAt: s.createdAt
+    };
+  });
+
   return NextResponse.json({
     periodId: session.id,
     timeLeft,
     duration,
-    status: timeLeft > 5 ? "BETTING" : "RESOLVING"
+    status: timeLeft > 5 ? "BETTING" : "RESOLVING",
+    history
   });
 }
