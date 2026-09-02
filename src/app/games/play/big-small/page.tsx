@@ -49,7 +49,8 @@ export default function WingoGamePage() {
     let isSubscribed = true;
 
     // 1. Establish Authenticated WebSocket Connection
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+    // Removed hardcoded localhost. In production, this falls back to robust HTTP polling if ws isn't hosted
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
     const userToken = session?.user?.id || (session?.user as any)?.supabaseId || "guest_session";
 
     const socket = io(socketUrl, {
@@ -157,11 +158,16 @@ export default function WingoGamePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          gameName: "wingo", // Matched with backend validator expectation
           gameId: "wingo",
+          gameMode: activeMode, // Sent mode (e.g. wingo_30s)
           action: "PLACE",
+          amount: totalWager,
           betAmount: totalWager,
           currency: activeCurrency,
+          choice: betSelection,
           selection: betSelection,
+          periodId: periodId,
           sessionId: periodId
         })
       });

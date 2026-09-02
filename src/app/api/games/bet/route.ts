@@ -11,9 +11,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { gameName, sessionId, betAmount } = await req.json();
+    const body = await req.json();
+    console.log("Incoming Bet Payload:", body);
+
+    const gameName = body.gameName || body.gameId;
+    const sessionId = body.sessionId || body.periodId;
+    const betAmount = body.betAmount || body.amount;
+    const selection = body.selection || body.choice;
 
     if (!gameName || !sessionId || !betAmount || betAmount <= 0) {
+      console.error("Bet Validation Failed. Fields received:", { gameName, sessionId, betAmount });
       return NextResponse.json({ error: "Invalid bet parameters" }, { status: 400 });
     }
 
@@ -51,7 +58,8 @@ export async function POST(req: NextRequest) {
           sessionId: sessionId,
           betAmount: betAmount,
           winLossStatus: 'LOSS', // Default to LOSS until they cash out or win
-          payoutAmount: 0
+          payoutAmount: 0,
+          playersData: selection ? JSON.stringify({ selection }) : null
         }
       });
 
