@@ -139,12 +139,14 @@ export default function DepositModal() {
   const [copied, setCopied] = useState(false);
   const [dynamicAddress, setDynamicAddress] = useState<string>("");
   const [isLoadingAddress, setIsLoadingAddress] = useState(false);
+  const [addressError, setAddressError] = useState<string>("");
   
   useEffect(() => {
     if (view === 'crypto_qr' && selectedMethod) {
       const fetchAddress = async () => {
         setIsLoadingAddress(true);
         setDynamicAddress("");
+        setAddressError("");
         try {
           const res = await fetch('/api/rhino/deposit', {
             method: 'POST',
@@ -157,11 +159,14 @@ export default function DepositModal() {
           });
           const data = await res.json();
           console.log("API Response:", data);
-          if (data.success && typeof data.address === "string") {
+          if (data.success && typeof data.address === "string" && data.address.trim() !== "") {
             setDynamicAddress(data.address);
+          } else {
+            setAddressError("Failed to generate address, please try again later");
           }
         } catch (err) {
           console.error(err);
+          setAddressError("Failed to generate address, please try again later");
         }
         setIsLoadingAddress(false);
       };
@@ -422,9 +427,15 @@ export default function DepositModal() {
           <div className="w-full max-w-sm bg-[#131824] border border-gray-800 rounded-xl p-4 mb-4 flex justify-between items-center">
             <div className="overflow-hidden">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Deposit Address</p>
-              <p className="text-sm font-mono text-gray-300 truncate pr-4">{isLoadingAddress ? "Generating..." : (typeof dynamicAddress === "string" ? dynamicAddress : JSON.stringify(dynamicAddress)) || "Address unavailable"}</p>
+              <p className={`text-sm font-mono truncate pr-4 ${addressError && !isLoadingAddress ? "text-red-400 text-xs" : "text-gray-300"}`}>
+                {isLoadingAddress ? "Generating..." : addressError ? addressError : (typeof dynamicAddress === "string" ? dynamicAddress : JSON.stringify(dynamicAddress))}
+              </p>
             </div>
-            <button onClick={() => handleCopy(dynamicAddress || "")} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+            <button 
+              onClick={() => handleCopy(dynamicAddress || "")} 
+              disabled={!!addressError || isLoadingAddress}
+              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               {copied ? <CheckCircle2 className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5 text-gray-400" />}
             </button>
           </div>
