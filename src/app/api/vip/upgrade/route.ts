@@ -10,56 +10,83 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { level, price } = await req.json();
+    const body = await req.json();
+    const { level, price } = body;
 
-    if (!level || !price) {
+    if (!level || price === undefined || price === null) {
       return NextResponse.json({ error: "Invalid parameters" }, { status: 400 });
     }
 
-    const targetLevel = parseInt(level.replace("L", ""));
-    // Fix: use vipLevelId instead of vipLevel to match session type
-    const currentLevel = (session.user as any).vipLevelId || 0;
+    const targetLevel = parseInt(String(level).replace("L", ""), 10);
+    const numericPrice = parseFloat(price);
 
-    if (targetLevel <= currentLevel) {
-      return NextResponse.json({ error: "Already at or above this VIP level" }, { status: 400 });
+    if (isNaN(targetLevel) || isNaN(numericPrice) || numericPrice < 0) {
+      return NextResponse.json({ error: "Invalid format for level or price" }, { status: 400 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id }
+      where: { id: session.user.id },
+      include: { vipLevel: true } // securely get current level directly from DB
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.mainWalletBalance < price) {
+    const currentLevel = user.vipLevelId || 0;
+
+    if (targetLevel <= currentLevel) {
+      return NextResponse.json({ error: "Already at or above this VIP level" }, { status: 400 });
+    }
+
+    if (user.mainWalletBalance < numericPrice) {
       return NextResponse.json({ error: "Insufficient wallet balance", code: "INSUFFICIENT_FUNDS" }, { status: 400 });
     }
 
-    // Deduct balance and update VIP level atomically using vipLevelId
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        mainWalletBalance: { decrement: price },
-        vipLevelId: targetLevel
-      }
+    // Verify if the target level actually exists in the VipLevel table
+    const vipLevelExists = await prisma.vipLevel.findUnique({
+      where: { id: targetLevel }
     });
 
-    // Also record this as a transaction for audit trail
-    await prisma.transaction.create({
-      data: {
-        userId: user.id,
-        type: "WITHDRAWAL", // Technically a purchase
-        amount: price,
-        status: "APPROVED",
-        utrOrHash: `VIP_UPGRADE_${level}`
-      }
+    if (!vipLevelExists) {
+      // Rather than crashing with foreign key constraint, handle it gracefully
+      return NextResponse.json({ error: "The requested VIP level does not exist in the database." }, { status: 400 });
+    }
+
+    // Deduct balance and update VIP level atomically using prisma transaction
+    const [updatedUser, transaction] = await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          mainWalletBalance: { decrement: numericPrice },
+          vipLevelId: targetLevel
+        }
+      }),
+      prisma.transaction.create({
+        data: {
+          userId: user.id,
+          type: "WITHDRAWAL", // Technically a purchase
+          amount: numericPrice,
+          status: "APPROVED",
+          utrOrHash: `VIP_UPGRADE_L${targetLevel}`
+        }
+      })
+    ]);
+
+    return NextResponse.json({ 
+      success: true, 
+      newLevel: updatedUser.vipLevelId, 
+      newBalance: updatedUser.mainWalletBalance 
     });
 
-    return NextResponse.json({ success: true, newLevel: targetLevel, newBalance: user.mainWalletBalance - price });
-
-  } catch (error) {
-    console.error("VIP Upgrade Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    console.error("VIP Upgrade Error:", error.message || error);
+    
+    // Catch common prisma foreign key or validation errors safely
+    if (error.code === 'P2003') {
+      return NextResponse.json({ error: "Foreign key constraint failed. VIP level likely does not exist." }, { status: 400 });
+    }
+    
+    return NextResponse.json({ error: "Internal Server Error", message: error.message || "Unknown error" }, { status: 500 });
   }
 }
