@@ -114,7 +114,7 @@ export default function AviatorGamePage() {
     let isSubscribed = true;
 
     // 1. Establish Authenticated WebSocket Connection
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
     const userToken = session?.user?.id || (session?.user as any)?.supabaseId || "guest_session";
 
     const socket = io(socketUrl, {
