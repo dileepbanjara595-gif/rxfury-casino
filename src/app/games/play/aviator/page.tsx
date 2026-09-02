@@ -86,18 +86,18 @@ export default function AviatorGamePage() {
   }, []);
 
   useEffect(() => {
-    // Fetch real history on load
-    fetch('/api/games/history?game=Aviator&limit=15')
+    // Fetch real history & state on load from RapidAPI
+    fetch('/api/games/aviator/live')
       .then(res => res.json())
-      .then(data => {
-        if (data.history && data.history.length > 0) {
-          const muls = data.history.map(h => typeof h.result === 'object' ? h.result.crashMultiplier : h.result).filter(m => m != null);
-          if (muls.length > 0) {
-             setRecentHistory(muls);
-          }
+      .then(payload => {
+        if (payload.success && payload.data) {
+           setSyncState(prev => ({ ...prev, ...payload.data }));
+           if (payload.data.history && payload.data.history.length > 0) {
+             setRecentHistory(payload.data.history);
+           }
         }
       })
-      .catch(e => console.error("History fetch error", e));
+      .catch(e => console.error("RapidAPI fetch error", e));
       
     // If no history in 3 seconds, leave empty so UI shows "Live history currently unavailable - reconnecting..."
     const fallbackTimer = setTimeout(() => {
@@ -160,19 +160,27 @@ export default function AviatorGamePage() {
     });
 
     // 2. High-Reliability Fallback Polling Loop
+    // 2. Live Multiplier Polling Loop (via RapidAPI Bet7k)
     const pollState = async () => {
       try {
-        const res = await fetch('/api/games/state?game=aviator');
+        const res = await fetch('/api/games/aviator/live');
         if (res.ok && isSubscribed) {
-          const data = await res.json();
-          setSyncState(prev => ({
-            ...prev,
-            ...data,
-            currentSessionId: data.sessionId || prev.currentSessionId
-          }));
+          const payload = await res.json();
+          if (payload.success && payload.data) {
+            setSyncState(prev => ({
+              ...prev,
+              ...payload.data,
+              currentSessionId: payload.data.currentSessionId || prev.currentSessionId
+            }));
+            
+            // Sync history dynamically from the live RapidAPI feed
+            if (payload.data.history && Array.isArray(payload.data.history) && payload.data.history.length > 0) {
+              setRecentHistory(payload.data.history);
+            }
+          }
         }
       } catch (e) {
-        // Non-blocking fallback
+        console.error("Live Aviator API Sync Error:", e);
       }
     };
 
