@@ -53,6 +53,22 @@ export default function WingoGamePage() {
     setMounted(true);
     let isSubscribed = true;
 
+    // Fetch persisted My Bets
+    const fetchMyBets = async () => {
+      if (session?.user?.id) {
+        try {
+          const res = await fetch(`/api/games/my-bets?game=${activeMode}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && isSubscribed) {
+              setMyBets(data.myBets || []);
+            }
+          }
+        } catch(e) {}
+      }
+    };
+    fetchMyBets();
+
     // 1. Establish Authenticated WebSocket Connection
     // Removed hardcoded localhost. In production, this falls back to robust HTTP polling if ws isn't hosted
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? window.location.origin : "");
@@ -219,7 +235,11 @@ export default function WingoGamePage() {
       });
       const data = await res.json();
       if (data.success) {
-        setBaseBalance(data.newBalanceBase);
+        // CRITICAL FIX: Ensure strictly parsed float to avoid NaN bug
+        const parsedBalance = Number(data.newBalance);
+        if (!isNaN(parsedBalance)) {
+          setBaseBalance(parsedBalance);
+        }
         setMyBets(prev => [{
           id: Date.now(),
           period: periodId,
