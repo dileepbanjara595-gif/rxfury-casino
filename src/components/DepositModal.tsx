@@ -44,6 +44,88 @@ const WITHDRAW_METHODS = [
 
 const FIAT_PILLS = [500, 700, 1000, 1500, 3000, 5000];
 
+
+const CryptoIcon = ({ symbol, className }: { symbol: string, className?: string }) => {
+  switch (symbol?.toUpperCase()) {
+    case 'USDT':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#26A17B"/>
+          <path d="M13.842 9.53V7.276H17.47V4.4H6.53v2.875h3.626v2.253c-2.923.364-5.114 1.34-5.114 2.508 0 1.144 2.13 2.102 4.98 2.483v4.46h2.152v-4.439c2.812-.395 4.89-1.345 4.89-2.463 0-1.196-2.252-2.186-5.222-2.556v-2.53h2.006Zm-1.842 4.09c-2.735 0-4.954-.766-4.954-1.71 0-.943 2.219-1.708 4.954-1.708 2.734 0 4.953.765 4.953 1.708 0 .944-2.219 1.71-4.953 1.71Z" fill="#fff"/>
+        </svg>
+      );
+    case 'USDC':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#2775CA"/>
+          <path d="M14.56 16.924c-1.393.743-3.66.743-5.116 0-1.573-.804-2.285-2.604-1.913-4.373.34-1.616 1.83-2.978 3.5-3.32v5.856c.496.062 1.053.03 1.549-.061V9.167c1.394.28 2.57 1.209 3.036 2.541.155.435.34 1.209.092 1.643h2.447c.186-1.023-.062-2.138-.62-3.036-.96-1.549-2.54-2.571-4.305-2.88V5h-1.55v2.448C9.56 7.79 7.64 9.122 6.897 10.98c-.743 1.859-.434 4.027.805 5.576 1.208 1.518 3.253 2.355 5.172 2.138v2.355h1.55v-2.355c1.889-.186 3.593-1.147 4.678-2.634.62-.837.99-1.859 1.084-2.913H17.74c-.062 1.518-.93 2.85-2.262 3.501h-.919v.276Z" fill="#fff"/>
+        </svg>
+      );
+    case 'BTC':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#F7931A"/>
+          <path d="M16.63 11.23c.36-2.44-1.51-3.75-4.08-4.63l.83-3.34-2.03-.5-.81 3.25c-.53-.13-1.07-.26-1.61-.39l.82-3.29-2.03-.5-.83 3.33c-.44-.1-.87-.21-1.28-.31l.01-.02-2.8-.7-.54 2.16s1.5.35 1.47.36c.82.2.97.74.95 1.17l-.95 3.82c.05.02.13.04.22.08-.07-.02-.15-.04-.23-.06l-1.34 5.37c-.11.29-.38.72-1.12.54.02.01-1.48-.37-1.48-.37l-1 2.3 2.65.66c.5.13.98.25 1.46.38l-.84 3.38 2.03.5.83-3.34c.55.15 1.08.28 1.6.4l-.82 3.32 2.03.51.84-3.37c3.46.66 6.07.39 6.89-2.73.66-2.52-.08-3.98-1.87-4.93 1.33-.31 2.33-1.19 2.58-3.03Zm-4.6 6.13c-.93 3.73-7.19 1.71-9.22 1.21l1.64-6.58c2.03.5 8.54 1.52 7.58 5.37Zm.83-5.71c-.84 3.37-6.02 1.62-7.7 1.2l1.49-5.99c1.68.42 7.07 1.31 6.21 4.79Z" fill="#fff"/>
+        </svg>
+      );
+    case 'ETH':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#627EEA"/>
+          <path d="M12 4.5l-4.7 7.7 4.7 2.7 4.7-2.7L12 4.5zm0 11.2l-4.7-2.7 4.7 6.6 4.7-6.6-4.7 2.7z" fill="#fff"/>
+        </svg>
+      );
+    case 'SOL':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#000"/>
+          <path d="M15.4 7.6H6.1L7.8 6h9.3l-1.7 1.6zm-7.6 2.8h9.3l-1.7 1.6H6.1l1.7-1.6zm7.6 2.8H6.1L7.8 11.6h9.3l-1.7 1.6zm-7.6 2.8h9.3l-1.7 1.6H6.1l1.7-1.6z" fill="#00FFA3"/>
+        </svg>
+      );
+    case 'TRX':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#EF0027"/>
+          <path d="M7 16l8-10v8l2 2-10-1zM11 6l2-2-4 6 2-4z" fill="#fff"/>
+        </svg>
+      );
+    case 'BNB':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#F0B90B"/>
+          <path d="M12 7l-2.5 2.5L12 12l2.5-2.5L12 7zm-3.5 3.5L6 13l2.5 2.5L11 13l-2.5-2.5zm7 0L13 13l2.5 2.5L18 13l-2.5-2.5zM12 14l-2.5 2.5L12 19l2.5-2.5L12 14z" fill="#fff"/>
+        </svg>
+      );
+    case 'DOGE':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#C2A633"/>
+          <text x="12" y="16" fontSize="12" fontWeight="bold" fill="#fff" textAnchor="middle">Đ</text>
+        </svg>
+      );
+    case 'LTC':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#345D9D"/>
+          <text x="12" y="16" fontSize="12" fontWeight="bold" fill="#fff" textAnchor="middle">Ł</text>
+        </svg>
+      );
+    case 'BCH':
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#8DC351"/>
+          <path d="M16.63 11.23c.36-2.44-1.51-3.75-4.08-4.63l.83-3.34-2.03-.5-.81 3.25c-.53-.13-1.07-.26-1.61-.39l.82-3.29-2.03-.5-.83 3.33c-.44-.1-.87-.21-1.28-.31l.01-.02-2.8-.7-.54 2.16s1.5.35 1.47.36c.82.2.97.74.95 1.17l-.95 3.82c.05.02.13.04.22.08-.07-.02-.15-.04-.23-.06l-1.34 5.37c-.11.29-.38.72-1.12.54.02.01-1.48-.37-1.48-.37l-1 2.3 2.65.66c.5.13.98.25 1.46.38l-.84 3.38 2.03.5.83-3.34c.55.15 1.08.28 1.6.4l-.82 3.32 2.03.51.84-3.37c3.46.66 6.07.39 6.89-2.73.66-2.52-.08-3.98-1.87-4.93 1.33-.31 2.33-1.19 2.58-3.03Zm-4.6 6.13c-.93 3.73-7.19 1.71-9.22 1.21l1.64-6.58c2.03.5 8.54 1.52 7.58 5.37Zm.83-5.71c-.84 3.37-6.02 1.62-7.7 1.2l1.49-5.99c1.68.42 7.07 1.31 6.21 4.79Z" fill="#fff" transform="rotate(-15, 12, 12)"/>
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 24 24" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="12" fill="#555"/>
+          <text x="12" y="16" fontSize="12" fontWeight="bold" fill="#fff" textAnchor="middle">{symbol ? symbol[0] : 'C'}</text>
+        </svg>
+      );
+  }
+};
 export default function DepositModal() {
   const { isOpen, type, view, selectedMethod, closeModal, setView, setMethod, openModal } = useDepositModalStore();
   const { user } = useUserStore();
@@ -168,7 +250,7 @@ export default function DepositModal() {
                 className="bg-[#131824] border border-gray-800 rounded-xl p-4 cursor-pointer hover:bg-white/5 hover:border-gray-600 transition-all group text-center"
               >
                 <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
-                  <Bitcoin className="w-6 h-6 text-yellow-500" />
+                  <CryptoIcon symbol={method.symbol} className="w-8 h-8" />
                 </div>
                 <p className="text-sm font-bold text-gray-300">{method.name}</p>
                 <span className="inline-block mt-1 px-2 py-0.5 bg-gray-800 rounded text-xs font-mono text-gray-400">{method.network}</span>
@@ -304,7 +386,7 @@ export default function DepositModal() {
               onClick={() => setMethod(method)}
               className={`flex items-center p-3 rounded-xl cursor-pointer transition-colors ${selectedMethod?.id === method.id ? 'bg-emerald-500/10 border border-emerald-500/30' : 'hover:bg-white/5 border border-transparent'}`}
             >
-              <Bitcoin className={`w-5 h-5 mr-3 ${selectedMethod?.id === method.id ? 'text-emerald-500' : 'text-gray-400'}`} />
+              <CryptoIcon symbol={method.symbol} className={`w-6 h-6 mr-3 transition-all ${selectedMethod?.id !== method.id ? 'opacity-40 grayscale' : 'scale-110 drop-shadow-md'}`} />
               <div>
                 <p className={`text-sm font-bold ${selectedMethod?.id === method.id ? 'text-emerald-400' : 'text-gray-300'}`}>{method.name}</p>
                 <p className="text-xs text-gray-500">{method.network}</p>
