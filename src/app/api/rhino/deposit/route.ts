@@ -47,13 +47,31 @@ export async function POST(request: Request) {
     
     console.log("Sending payload to Rhino.fi API:", rhinoPayload);
 
-    // 4. Send to Rhino
+    // 4. Authenticate: Exchange API Key for JWT
+    const authRes = await fetch('https://api.rhino.fi/authentication/auth/apiKey', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ apiKey: apiSecret })
+    });
+
+    if (!authRes.ok) {
+      const authErr = await authRes.text();
+      console.error('Rhino.fi Authentication Error:', authErr);
+      return NextResponse.json({ error: 'Failed to authenticate with Rhino API' }, { status: authRes.status });
+    }
+
+    const authData = await authRes.json();
+    const jwtToken = authData.token || authData.jwt || authData.accessToken || authData.tokenStr || authData;
+    const finalToken = typeof jwtToken === 'string' ? jwtToken : jwtToken?.token;
+    
+    // 5. Send to Rhino SDA Endpoint
     const response = await fetch('https://api.rhino.fi/sda/deposit-addresses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiSecret,
-        'x-api-key': apiSecret
+        'Authorization': `Bearer ${finalToken}`
       },
       body: JSON.stringify(rhinoPayload),
     });
