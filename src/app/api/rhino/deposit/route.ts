@@ -67,39 +67,45 @@ export async function POST(request: Request) {
 
     if (!authRes.ok) {
       const authErr = await authRes.text();
-      console.warn('Rhino.fi Authentication Error (Falling back to mock):', authErr);
+      console.error('Rhino.fi Authentication Error - Status:', authRes.status);
+      console.error('Rhino.fi Authentication Error - Body:', authErr);
+      console.error('Rhino.fi Authentication Error - Triggering mock fallback to prevent UI block');
       
       // Robust fallback for development / invalid test keys
       return NextResponse.json({
         success: true,
         address: generateMockAddress(rhinoChain),
-        details: { fallback: true, reason: 'Authentication failed, using mock address' }
+        details: { fallback: true, reason: 'Authentication failed, using mock address', error: authErr, status: authRes.status }
       });
     }
 
     const authData = await authRes.json();
-    const jwtToken = authData.token || authData.jwt || authData.accessToken || authData.tokenStr || authData;
+    // Rhino.fi docs usually return { jwt: "..." }
+    const jwtToken = authData.jwt || authData.token || authData.accessToken || authData.tokenStr || authData;
     const finalToken = typeof jwtToken === 'string' ? jwtToken : jwtToken?.token;
     
     // 5. Send to Rhino SDA Endpoint
+    // CRITICAL FIX: Rhino.fi specifically expects 'Authorization: YOUR_JWT' 
+    // WITHOUT the 'Bearer ' prefix, which was causing the InvalidJwt rejection.
     const response = await fetch('https://api.rhino.fi/sda/deposit-addresses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${finalToken}`
+        'Authorization': finalToken
       },
       body: JSON.stringify(rhinoPayload),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.warn('Rhino.fi API Error Status:', response.status);
-      console.warn('Rhino.fi API Error Response (Falling back to mock):', errorText);
+      console.error('Rhino.fi API Error - Status:', response.status);
+      console.error('Rhino.fi API Error - Body:', errorText);
+      console.error('Rhino.fi API Error - Triggering mock fallback to prevent UI block');
       
       return NextResponse.json({
         success: true,
         address: generateMockAddress(rhinoChain),
-        details: { fallback: true, reason: 'SDA generation failed, using mock address', error: errorText }
+        details: { fallback: true, reason: 'SDA generation failed, using mock address', error: errorText, status: response.status }
       });
     }
 
