@@ -20,18 +20,19 @@ interface Game {
 }
 
 const gamesList: Game[] = [
-  { id: "aviator", name: "Aviator", category: "Fast", isLive: true, gradient: "from-red-500 to-orange-600", icon: "/images/games/aviator.png" },
-  { id: "mines", name: "Mines", category: "Fast", isLive: true, gradient: "from-emerald-500 to-teal-700", icon: "/images/games/mines.jpg" },
-  { id: "chicken-road", name: "Chicken Road", category: "Fast", isLive: true, gradient: "from-yellow-400 to-orange-500", icon: "/images/games/chicken-road.jpg" },
+  // Temporarily hidden per user request
+  // { id: "aviator", name: "Aviator", category: "Fast", isLive: true, gradient: "from-red-500 to-orange-600", icon: "/images/games/aviator.png" },
+  // { id: "mines", name: "Mines", category: "Fast", isLive: true, gradient: "from-emerald-500 to-teal-700", icon: "/images/games/mines.jpg" },
+  // { id: "chicken-road", name: "Chicken Road", category: "Fast", isLive: true, gradient: "from-yellow-400 to-orange-500", icon: "/images/games/chicken-road.jpg" },
   { id: "big-small", name: "Big & Small", category: "Fast", isLive: true, gradient: "from-blue-500 to-indigo-600", icon: "/images/games/big-small.jpg" },
-  { id: "k3", name: "K3", category: "Fast", isLive: true, gradient: "from-purple-500 to-pink-600", icon: "/images/games/k3.jpg" },
-  { id: "moto-racing", name: "Moto Racing", category: "Fast", isLive: true, gradient: "from-gray-600 to-gray-900", icon: "/images/games/moto-racing.jpg" },
-  { id: "rummy", name: "Rummy", category: "Card", isLive: true, gradient: "from-red-700 to-red-900", icon: "/images/games/rummy.jpg" },
-  { id: "teen-patti", name: "Teen Patti", category: "Card", isLive: true, gradient: "from-orange-600 to-red-700", icon: "/images/games/teen-patti.jpg" },
-  { id: "poker", name: "Poker", category: "Card", isLive: true, gradient: "from-blue-700 to-blue-900", icon: "/images/games/poker.jpg" },
-  { id: "blackjack", name: "Blackjack", category: "Card", isLive: true, gradient: "from-gray-800 to-black", icon: "/images/games/blackjack.jpg" },
-  { id: "solitaire", name: "Solitaire", category: "Skill", isLive: false, gradient: "from-green-600 to-green-800", icon: "/images/games/solitaire.jpg" },
-  { id: "bridge", name: "Bridge", category: "Card", isLive: true, gradient: "from-indigo-600 to-purple-800", icon: "/images/games/bridge.jpg" },
+  // { id: "k3", name: "K3", category: "Fast", isLive: true, gradient: "from-purple-500 to-pink-600", icon: "/images/games/k3.jpg" },
+  // { id: "moto-racing", name: "Moto Racing", category: "Fast", isLive: true, gradient: "from-gray-600 to-gray-900", icon: "/images/games/moto-racing.jpg" },
+  // { id: "rummy", name: "Rummy", category: "Card", isLive: true, gradient: "from-red-700 to-red-900", icon: "/images/games/rummy.jpg" },
+  // { id: "teen-patti", name: "Teen Patti", category: "Card", isLive: true, gradient: "from-orange-600 to-red-700", icon: "/images/games/teen-patti.jpg" },
+  // { id: "poker", name: "Poker", category: "Card", isLive: true, gradient: "from-blue-700 to-blue-900", icon: "/images/games/poker.jpg" },
+  // { id: "blackjack", name: "Blackjack", category: "Card", isLive: true, gradient: "from-gray-800 to-black", icon: "/images/games/blackjack.jpg" },
+  // { id: "solitaire", name: "Solitaire", category: "Skill", isLive: false, gradient: "from-green-600 to-green-800", icon: "/images/games/solitaire.jpg" },
+  // { id: "bridge", name: "Bridge", category: "Card", isLive: true, gradient: "from-indigo-600 to-purple-800", icon: "/images/games/bridge.jpg" },
 ];
 
 export default function GamesLobbyPage() {

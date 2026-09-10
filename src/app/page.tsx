@@ -139,10 +139,12 @@ export default function Home() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { id: "aviator", name: "Aviator", category: "Fast", tag: "Live", isLive: true, color: "from-red-500 to-red-700", icon: "/images/games/aviator.png" },
-              { id: "teen-patti", name: "Teen Patti", category: "Card", tag: "Live", isLive: true, color: "from-green-500 to-green-700", icon: "/images/games/teen-patti.jpg" },
-              { id: "blackjack", name: "Blackjack", category: "Card", tag: "Live", isLive: true, color: "from-purple-500 to-purple-700", icon: "/images/games/blackjack.jpg" },
-              { id: "solitaire", name: "Solitaire", category: "Skill", tag: "Skill", isLive: false, color: "from-emerald-500 to-emerald-700", icon: "/images/games/solitaire.jpg" }
+              // Temporarily hidden per user request
+              // { id: "aviator", name: "Aviator", category: "Fast", tag: "Live", isLive: true, color: "from-red-500 to-red-700", icon: "/images/games/aviator.png" },
+              // { id: "teen-patti", name: "Teen Patti", category: "Card", tag: "Live", isLive: true, color: "from-green-500 to-green-700", icon: "/images/games/teen-patti.jpg" },
+              // { id: "blackjack", name: "Blackjack", category: "Card", tag: "Live", isLive: true, color: "from-purple-500 to-purple-700", icon: "/images/games/blackjack.jpg" },
+              // { id: "solitaire", name: "Solitaire", category: "Skill", tag: "Skill", isLive: false, color: "from-emerald-500 to-emerald-700", icon: "/images/games/solitaire.jpg" },
+              { id: "big-small", name: "Big & Small", category: "Fast", tag: "Live", isLive: true, color: "from-blue-500 to-indigo-600", icon: "/images/games/big-small.jpg" }
             ].map((game) => (
               <GameCard key={game.id} game={game} />
             ))}
